@@ -25,11 +25,13 @@ class MenuManager:
     def get_menu(self):
         return self.menu_items
     
-    def create_menu(self):
+    def create_menu(self, menu_name, menu_cook_time, menu_price):
         '''
         메뉴 추가, 이름, 가격, 조리시간 추가
         이미 존재하는 메뉴를 추가하려 할 시 Error -> update할지, 취소시킬지 ?
         '''
+        if menu_name in self.menu_items :
+            print('Error: 이미 존재하는 메뉴 이름입니다.')
         pass
 
     def update_menu(self):
@@ -42,4 +44,15 @@ class MenuManager:
         '''
         메뉴 삭제, 이미 존재하는 메뉴를 리스트로 나열하고, 선택해서 삭제
         '''
+        pass
+
+    def print_menu(self):
+        '''
+        메뉴 목록 리스트로 출력
+        '''
+        print('---------------- Menu List ----------------')
+        print('Menu Name            | Cook Time | Price')
+        for menu, dict in self.menu_items.items() :
+            print(f"{dict.name:20s} | {dict.cook_time:02d} min    | {dict.price:d} won")
+        print('-------------------------------------------')
         pass
