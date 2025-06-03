@@ -1,26 +1,19 @@
-class Menu:
-    def __init__(self, name: str, cook_time: int, price: int):
+class MenuItem:
+    def __init__(self, name, cook_time, price):
         self.name = name
-        self.cook_time = cook_time
+        self.cook_time = cook_time  # in minutes
         self.price = price
-
 
 class MenuManager:
     def __init__(self):
-        self.menu_items = {}
+        self.menu_items = {
+            "Americano": MenuItem("Americano", 3, 3000),
+            "Latte": MenuItem("Latte", 5, 3500),
+            "Mocha": MenuItem("Mocha", 6, 3800),
+            "Espresso": MenuItem("Espresso", 2, 2500)
+        }
 
-    def create_menu(self, name, time, price):
-        self.menu_items[name] = Menu(name, time, price)
+    def get_menu(self):
+        return self.menu_items
 
-    def update_menu(self, name, time=None, price=None):
-        if name in self.menu_items:
-            if time is not None:
-                self.menu_items[name].cook_time = time
-            if price is not None:
-                self.menu_items[name].price = price
 
-    def delete_menu(self, name):
-        self.menu_items.pop(name, None)
-
-    def list_menu(self):
-        return list(self.menu_items.values())
