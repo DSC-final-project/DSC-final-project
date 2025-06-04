@@ -35,5 +35,6 @@ test_menu_manager.print_menu()
 #         break
 
 main_menu = user_services.main_service_menu()
-while True:
-    main_menu.main_system()
+menu_repeat_flag = True
+while menu_repeat_flag:
+    menu_repeat_flag = main_menu.main_system()

@@ -39,10 +39,20 @@ class main_service_menu :
         
     def main_system(self):
         '''
+        메인 시스템
+        이 함수를 호출할 때 True 조건을 걸어두고,
+        End system을 선택한 경우 False를 반환하게 함
+
         1. 주문 관리
         2. 메뉴 관리
         3. 틱 진행
         4. 종료
+
+        Input
+        ; 없음
+        Output
+        ; 일반적인 경우 True 반환
+        ; End_system이 호출된 경우 False를 반환 -> 종료
         '''
         print('---------------- Main Menu ----------------')
         print('1 | Order Management')
@@ -59,17 +69,53 @@ class main_service_menu :
             self.tick_system()
         elif user_input == 4 :
             self.end_system()
+            return False
         else :
             # 이 부분은 일반적으로는 접근 불가능해야함.
             print('Critical Error')
+        return True
         pass
 
     def order_system(self) :
+        '''
+        주문 관련 시스템
+        1. 주문 생성
+        2. 주문 확인
+        3. 주문 수정 + 삭제
+        4. 뒤로가기
+        '''
+        print('---------------- Order Menu ---------------')
+        print('1 | Make Order')
+        print('2 | Check Order')
+        print('3 | Modify Order')
+        print('4 | Previous Page')
+        print('-------------------------------------------')
         pass
+    
     def menu_system(self) :
+        '''
+        메뉴 관리 시스템
+        관리자만 접근 가능해야 함 -> 구현할까?
+        1. 메뉴 생성
+        2. 메뉴 출력
+        3. 메뉴 수정 + 삭제
+        4. 뒤로가기
+        '''
+        print('------------- Menu Management -------------')
+        print('1 | Create Menu')
+        print('2 | Print Menu')
+        print('3 | Modify Menu')
+        print('4 | Previous Page')
+        print('-------------------------------------------')
         pass
+    
     def tick_system(self) :
         pass
-    def end_system(self) :
-        pass
 
+    def end_system(self) :
+        '''
+        프로그램 종료, 현재 남아있는 데이터와 메뉴를 저장하고 end 해야함
+
+        '''
+        print('프로그램을 종료합니다.')
+        pass
