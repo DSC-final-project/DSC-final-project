@@ -5,7 +5,8 @@
 from core.menu import MenuManager
 
 class main_service_menu :
-    def __init__(self):
+    def __init__(self, menu_manager):
+        self.menu_manager = menu_manager
         pass
 
     def user_input_process(self, input_count):
@@ -90,7 +91,22 @@ class main_service_menu :
         print('3 | Modify Order')
         print('4 | Previous Page')
         print('-------------------------------------------')
-        pass
+        while True :
+            user_input = self.user_input_process(4)
+            if user_input == 1 :
+                pass
+            elif user_input == 2 :
+                pass
+            elif user_input == 3 :
+                pass
+            elif user_input == 4 :
+                print('이전 메뉴로 돌아갑니다.\n')
+                break
+            else :
+                # 일반적으로 접근 불가능
+                print('Critical Error')
+                break
+        # Loop문 탈출하면 자동으로 돌아감
     
     def menu_system(self) :
         '''
@@ -101,13 +117,58 @@ class main_service_menu :
         3. 메뉴 수정 + 삭제
         4. 뒤로가기
         '''
-        print('------------- Menu Management -------------')
-        print('1 | Create Menu')
-        print('2 | Print Menu')
-        print('3 | Modify Menu')
-        print('4 | Previous Page')
-        print('-------------------------------------------')
-        pass
+        first_run_counter = True # 입력 잘못했을때 or 초기 실행시만 메뉴 목록 출력하게 만들기
+        while True :
+            if first_run_counter == True :
+                print('------------- Menu Management -------------')
+                print('1 | Create Menu')
+                print('2 | Print Menu')
+                print('3 | Modify Menu')
+                print('4 | Previous Page')
+                print('-------------------------------------------')
+                first_run_counter = False # False이면 While loop을 돌아도 위 메뉴가 출력 안됨
+            
+            user_input = self.user_input_process(4)
+            if user_input == 1 : # 메뉴 추가
+                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                while True: # 메뉴 추가 루프
+                    self.menu_manager.print_menu()
+                    input_name = input('메뉴 이름 입력: ')
+                    input_cook_time = input('조리 시간 입력: ')
+                    input_price = input('메뉴 가격 입력: ')
+
+                    create_checker = self.menu_manager.create_menu(input_name, input_cook_time, input_price)
+                    if create_checker == -1 :
+                        recheck = input('다시 추가하시겠습니까? (Y/N): ') # 입력에 실패한 경우, 다시 입력을 받을 지 여부
+                        if recheck == 'Y' :
+                            continue
+                        else :
+                            print('이전 메뉴로 돌아갑니다.\n')
+                            break
+                    elif create_checker == 0 :
+                        print('정상적으로 메뉴가 추가되었습니다.\n')
+                        break
+
+            elif user_input == 2 : # 메뉴 출력
+                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                self.menu_manager.print_menu()
+                print()
+            
+            elif user_input == 3 : # 메뉴 수정
+                # 일단 메뉴 리스트 출력
+                # 수정할 메뉴 번호 or 이름 받기
+                # 돌아가려면 -1? 아니면 돌아가기 번호를 밑에 추가
+                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+
+                
+            elif user_input == 4 :
+                print('이전 메뉴로 돌아갑니다.\n')
+                break
+            else :
+                # 일반적으로 접근 불가능
+                print('Critical Error')
+                break
+        # Loop문 탈출하면 자동으로 돌아감
     
     def tick_system(self) :
         pass

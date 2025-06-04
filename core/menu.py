@@ -115,5 +115,4 @@ class MenuManager:
         for menu, dict in self.menu_items.items() :
             print(f"{dict.name:20s} | {dict.cook_time:02d} min    | {dict.price:d} won")
         print('-------------------------------------------')
-        print()
         pass
