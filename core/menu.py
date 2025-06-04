@@ -27,7 +27,8 @@ class MenuManager:
     def check_menu_already_on_queue(self, menu_name) :
         '''
         CRUD 기능에서, 해당 메뉴가 Queue에 이미 존재하는 지 체크
-        
+        이 함수에 들어오는 menu_name은 유효성 검사 완료
+
         Input
         ; menu_name - 검사할 메뉴 이름
         Output
@@ -88,7 +89,6 @@ class MenuManager:
         # 정상 처리
         self.menu_items[menu_name] = MenuItem(menu_name, menu_cook_time_integer, menu_price_integer)
         return 0
-        pass
 
     def update_menu(self):
         '''
@@ -96,10 +96,13 @@ class MenuManager:
         '''
         pass
 
-    def delete_menu(self):
+    def delete_menu(self, menu_name):
         '''
+        메뉴 삭제, 입력 받은 메뉴를 삭제함
+        
         메뉴 삭제, 이미 존재하는 메뉴를 리스트로 나열하고, 선택해서 삭제
         '''
+
         pass
 
     def print_menu(self):
