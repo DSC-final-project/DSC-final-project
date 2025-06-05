@@ -5,8 +5,8 @@
 from core.menu import MenuManager
 
 class main_service_menu :
-    def __init__(self, menu_manager):
-        self.menu_manager = menu_manager
+    def __init__(self, MenuManager):
+        self.menu_manager = MenuManager
         pass
 
     def user_input_process(self, input_count):
