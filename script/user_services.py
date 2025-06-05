@@ -2,6 +2,11 @@
 사용자가 시스템을 사용할 수 있도록 만드는 구조를 전부 저장.
 메뉴 시스템을 보여주고, 각 선택지마다 함수를 호출
 '''
+import os
+import sys
+current_dir = os.path.dirname(os.path.abspath(__file__))
+main_dir = os.path.join(current_dir, '..')
+sys.path.append(main_dir)
 from core.menu import MenuManager
 
 class main_service_menu :
@@ -159,6 +164,7 @@ class main_service_menu :
                 # 수정할 메뉴 번호 or 이름 받기
                 # 돌아가려면 -1? 아니면 돌아가기 번호를 밑에 추가
                 first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                self.menu_manager.print_menu_with_num()
 
                 
             elif user_input == 4 :

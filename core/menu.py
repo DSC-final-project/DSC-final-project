@@ -117,3 +117,16 @@ class MenuManager:
             print(f"{dict.name:20s} | {dict.cook_time:02d} min    | {dict.price:d} won")
         print('-------------------------------------------')
         pass
+
+    def print_menu_with_num(self):
+        '''
+        메뉴 목록을 리스트로 출력하면서, 번호도 매겨줌
+        '''
+        menu_num = 1
+        print('---------------- Menu List ----------------')
+        print('# | Menu Name        | Cook Time | Price')
+        for menu, dict in self.menu_items.items() :
+            print(f"{menu_num:02d} | {dict.name:16s} | {dict.cook_time:02d} min    | {dict.price:d} won")
+            menu_num += 1
+        print(f" -1 | 이전 메뉴로 돌아가려면 -1 을 입력하세요.")
+        print('-------------------------------------------')
