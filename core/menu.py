@@ -15,10 +15,11 @@ class MenuManager:
         하드코딩을 기반으로, 시스템에서 업데이트하면 여기서도 추가
         '''
         self.menu_items = {
-            "Americano": MenuItem("Americano", 3, 3000),
-            "Latte": MenuItem("Latte", 5, 3500),
-            "Mocha": MenuItem("Mocha", 6, 3800),
-            "Espresso": MenuItem("Espresso", 2, 2500)
+            "아메리카노": MenuItem("아메리카노", 3, 3000),
+            "카페라떼": MenuItem("카페라떼", 5, 3500),
+            "카페모카": MenuItem("카페모카", 6, 3800),
+            "에스프레소": MenuItem("에스프레소", 2, 2500),
+            "카푸치노":MenuItem("카푸치노", 5, 4000),
         }
 
     def get_menu(self):

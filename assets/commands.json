@@ -1,0 +1,7 @@
+[
+  {"time": 0, "action": "create", "menu": "아메리카노"},
+  {"time": 1, "action": "create", "menu": "카페라떼"},
+  {"time": 2, "action": "delete", "order_id": 1},
+  {"time": 3, "action": "update", "order_id": 2, "menu": "카푸치노"},
+  {"time": 4, "action": "print", "order_id": 2}
+]
