@@ -45,3 +45,4 @@ class OrderManager:
 
     def print_order(self, t):
         #Queue, Heap 상황 print
+        pass

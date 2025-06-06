@@ -93,20 +93,42 @@ class MenuManager:
         self.menu_items[menu_name] = MenuItem(menu_name, menu_cook_time_integer, menu_price_integer)
         return 0
 
-    def update_menu(self):
+    def update_menu(self, original_key, new_name, new_cook_time, new_price):
         '''
         메뉴 업데이트, 이미 존재하는 메뉴를 리스트로 나열하고, 선택해서 업데이트
-        '''
-        pass
 
-    def delete_menu(self, menu_name):
+        Input 
+        ; original_key - 원본 키
+        ; new_name - 업데이트할 이름
+        ; new_cook_time - 업데이트할 조리 시간
+        ; new_price - 업데이트할 가격
+        Output
+        ; 없음
+        '''
+        # 1. 원본 키를 사용해 수정할 메뉴 객체를 가져옵니다.
+        menu_object_to_update = self.menu_items[original_key]
+
+        # 2. 객체의 속성을 새로운 값으로 업데이트합니다.
+        menu_object_to_update.name = new_name
+        menu_object_to_update.cook_time = new_cook_time
+        menu_object_to_update.price = new_price
+
+        # 3. 메뉴 이름(딕셔너리의 키)이 변경되었다면,
+        if new_name != original_key:
+            # 새로운 이름으로 딕셔너리에 항목을 추가하고,
+            self.menu_items[new_name] = menu_object_to_update
+            # 이전 키를 가진 항목을 삭제합니다.
+            del self.menu_items[original_key]
+
+    def delete_menu(self, original_key):
         '''
         메뉴 삭제, 입력 받은 메뉴를 삭제함
-        
-        메뉴 삭제, 이미 존재하는 메뉴를 리스트로 나열하고, 선택해서 삭제
+        Input
+        ; original_key - 삭제할 메뉴의 키
+        Output
+        ; 없음
         '''
-
-        pass
+        del self.menu_items[original_key]
 
     def print_menu(self):
         '''
