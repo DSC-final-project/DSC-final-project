@@ -1,3 +1,5 @@
+from tabulate import tabulate # 예쁜 출력을 위해
+
 class MenuItem:
     def __init__(self, name, cook_time, price):
         self.name = name
@@ -109,24 +111,58 @@ class MenuManager:
     def print_menu(self):
         '''
         메뉴 목록 리스트로 출력
-        Formatting 맞춰놨는데, 나중에 외부 라이브러리로 예쁘게 만드는 것도 고려해봐야할듯
+        Tabulate 라이브러리로 출력 예쁘게 만듦
         '''
-        print('---------------- Menu List ----------------')
-        print('Menu Name            | Cook Time | Price')
+        headers = ["Menu Name", "Cook Time", "Price"]
+        table_data = []
         for menu, dict in self.menu_items.items() :
-            print(f"{dict.name:20s} | {dict.cook_time:02d} min    | {dict.price:d} won")
-        print('-------------------------------------------')
-        pass
+            cook_time_str = f"{dict.cook_time:02d} min"
+            price_str = f"{dict.price:,} won"
+            table_data.append([dict.name, cook_time_str, price_str])
+        
+        table_string = tabulate(table_data, headers=headers, tablefmt="orgtbl", colalign=("left", "left", "left"))
+        table_width = len(table_string.splitlines()[0])
+        title_text = " Menu List "
+        title_dash_length = table_width - len(title_text)
+        formatted_title = f"{'-' * (int(title_dash_length / 2))}{title_text}{'-' * (int(title_dash_length / 2))}"
+        bottom_border = "-" * table_width
+
+        print(formatted_title)
+        print(table_string)
+        print(bottom_border)
+        print()
 
     def print_menu_with_num(self):
         '''
         메뉴 목록을 리스트로 출력하면서, 번호도 매겨줌
+        -1로 돌아가기도 출력
+        끝에 print() 안함
         '''
-        menu_num = 1
-        print('---------------- Menu List ----------------')
-        print('# | Menu Name        | Cook Time | Price')
+        menu_num = 0
+        headers = ["#", "Menu Name", "Cook Time", "Price"]
+        table_data = []
         for menu, dict in self.menu_items.items() :
-            print(f"{menu_num:02d} | {dict.name:16s} | {dict.cook_time:02d} min    | {dict.price:d} won")
             menu_num += 1
-        print(f" -1 | 이전 메뉴로 돌아가려면 -1 을 입력하세요.")
-        print('-------------------------------------------')
+            menu_num_str = f"{menu_num:02d}"
+            cook_time_str = f"{dict.cook_time:02d} min"
+            price_str = f"{dict.price:,} won"
+            table_data.append([menu_num_str, dict.name, cook_time_str, price_str])
+        
+        table_string = tabulate(table_data, headers=headers, tablefmt="orgtbl", colalign=("left", "left", "left"))
+        table_width = len(table_string.splitlines()[0])
+        title_text = " Menu List "
+        title_dash_length = table_width - len(title_text)
+        formatted_title = f"{'-' * (int(title_dash_length / 2))}{title_text}{'-' * (int(title_dash_length / 2))}"        
+        bottom_middle_border = f"|{'-'*(table_width-2)}|"
+        bottom_border = "-" * table_width
+        cell1_content = " -1  "
+        cell2_content = " Prevous Page"
+        fixed_part_length = len("|") + len(cell1_content) + len("|") + len("|")
+        cell2_width = table_width - fixed_part_length
+        footer_text = f"|{cell1_content}|{cell2_content:<{cell2_width}}|"
+
+        print(formatted_title)
+        print(table_string)
+        print(bottom_middle_border)
+        print(footer_text)
+        print(bottom_border)

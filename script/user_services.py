@@ -7,6 +7,7 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 main_dir = os.path.join(current_dir, '..')
 sys.path.append(main_dir)
+
 from core.menu import MenuManager
 
 class main_service_menu :
@@ -157,7 +158,6 @@ class main_service_menu :
             elif user_input == 2 : # 메뉴 출력
                 first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
                 self.menu_manager.print_menu()
-                print()
             
             elif user_input == 3 : # 메뉴 수정
                 # 일단 메뉴 리스트 출력
