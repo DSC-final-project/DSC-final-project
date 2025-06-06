@@ -257,7 +257,9 @@ class main_service_menu :
 
                             # 정상 처리
                             self.menu_manager.menu_items[input_name] = menu_object_to_update
-                            del self.menu_manager.menu_items[original_key]
+                            # 1. 이름이 바뀐 경우
+                            if input_name != original_key :
+                                del self.menu_manager.menu_items[original_key]
                             menu_object_to_update.name = input_name
                             menu_object_to_update.cook_time = int(input_cook_time)
                             menu_object_to_update.price = int(input_price)
