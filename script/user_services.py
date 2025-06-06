@@ -43,31 +43,81 @@ class main_service_menu :
             print()
             break
         return int(user_input)
+    
+    def user_input_process_with_hidden_menu(self, input_count):
+        '''
+        사용자의 입력 처리 함수
+        여기에 hidden menu 선택지 잇음
+        9999 입력시 관리자 메뉴로 돌입
+
+        Input
+        ; input_count - 입력의 갯수가 총 몇개인지
+        Output
+        ; 선택한 메뉴의 번호
+        '''
+        while True:
+            user_input = input('메뉴를 선택해주세요: ')
+            # Case 1. 입력이 정수가 아닌 경우
+            try:
+                int(user_input)
+            except ValueError:
+                print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                continue
+
+            # Case 2. 입력이 주어진 범위를 벗어나는 경우
+            if not (int(user_input) > 0 and int(user_input) <= input_count) :
+                if not int(user_input) == 9999 :
+                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                    continue
+            
+            # Case 3. 정상 처리
+            print()
+            break
+        return int(user_input)
         
     def main_system(self):
         '''
-        메인 시스템
-        이 함수를 호출할 때 True 조건을 걸어두고,
-        End system을 선택한 경우 False를 반환하게 함
-
-        1. 주문 관리
-        2. 메뉴 관리
-        3. 틱 진행
-        4. 종료
+        일반 사용자가 접근하는 메인 시스템
 
         Input
         ; 없음
         Output
-        ; 일반적인 경우 True 반환
-        ; End_system이 호출된 경우 False를 반환 -> 종료
+        ; 없음
         '''
         print('---------------- Main Menu ----------------')
+        print('1 | Order Menu')
+        print('-------------------------------------------')
+        user_input = self.user_input_process_with_hidden_menu(1)
+        if user_input == 1 :
+            self.user_order_system()
+        elif user_input == 9999 :
+            print('관리자 메뉴로 진입합니다.\n')
+            system_off = self.operator_system() # 시스템 종료시 False 반환
+            if system_off == True :
+                # 시스템 종료 돌입
+                return False
+        else :
+            # 이 부분은 일반적으로는 접근 불가능해야함.
+            print('Critical Error')
+        return True
+
+    def operator_system(self) :
+        '''
+        관리자 전용 메뉴
+        Input
+        ; 없음
+        Output
+        ; True - Program off 메뉴 접근 시
+        ; False - Previous Page 메뉴 접근 시
+        '''
+        print('-------------- Operator Menu --------------')
         print('1 | Order Management')
         print('2 | Menu Management')
         print('3 | Tick Process')
         print('4 | Program Off')
+        print('5 | Previous Page')
         print('-------------------------------------------')
-        user_input = self.user_input_process(4)
+        user_input = self.user_input_process(5)
         if user_input == 1 :
             self.order_system()
         elif user_input == 2 :
@@ -76,11 +126,19 @@ class main_service_menu :
             self.tick_system()
         elif user_input == 4 :
             self.end_system()
+            return True
+        elif user_input == 5 :
             return False
         else :
             # 이 부분은 일반적으로는 접근 불가능해야함.
             print('Critical Error')
-        return True
+        return False
+
+    def user_order_system(self) :
+        '''
+        사용자 주문 관련 시스템
+        '''
+        print('hi')
         pass
 
     def order_system(self) :
