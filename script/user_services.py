@@ -157,6 +157,11 @@ class main_service_menu :
 
             elif user_input == 2 : # 메뉴 출력
                 first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                menu_count = len(self.menu_manager.menu_items)
+                # Corner Case) 만약 메뉴가 없는 경우
+                if menu_count == 0 :
+                    print('메뉴가 존재하지 않습니다.\n')
+                    break
                 self.menu_manager.print_menu()
             
             elif user_input == 3 : # 메뉴 수정
@@ -164,8 +169,97 @@ class main_service_menu :
                 # 수정할 메뉴 번호 or 이름 받기
                 # 돌아가려면 -1? 아니면 돌아가기 번호를 밑에 추가
                 first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                menu_count = len(self.menu_manager.menu_items)
+                # Corner Case) 만약 메뉴가 없는 경우
+                if menu_count == 0 :
+                    print('메뉴가 존재하지 않습니다.\n')
+                    break
                 self.menu_manager.print_menu_with_num()
 
+                while True : # 메뉴 수정 loop
+                    update_input = input("수정할 메뉴를 선택하세요: ")
+                    # 만약 입력이 숫자인 경우
+                    try :
+                        int(update_input)
+                        if update_input == '-1' : # 돌아가기 선택
+                            print('이전 메뉴로 돌아갑니다.\n')
+                            break
+                        elif update_input <= '0' or int(update_input) > menu_count : # 잘못된 범위
+                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                            continue
+                        else :
+                            all_menu_keys = list(self.menu_manager.menu_items.keys())
+                            original_key = all_menu_keys[int(update_input)-1]
+                            menu_object = self.menu_manager.menu_items[original_key]
+                            selected_menu = (original_key, menu_object)
+                    except ValueError : # integer가 아님 -> 입력이 문자인 경우
+                        menu_object = self.menu_manager.menu_items.get(update_input) # get은 실패하면 None
+                        if menu_object is not None :
+                            selected_menu = (update_input, menu_object)
+                        else :
+                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                            continue
+                    except IndexError :
+                        print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                        continue
+
+                    # selected_menu를 수정하면 된다. 빈칸으로 두면 원래 것을 그대로 사용
+                    original_key, menu_object_to_update = selected_menu
+                    
+                    print(f"선택한 메뉴 '{menu_object_to_update.name}' 의 정보를 수정합니다.")
+                    print(f"빈칸을 입력하면 원래 값을 유지합니다.\n")
+                    while True:
+                        # 오류가 나면 다시 입력 받아야 함
+                        input_name = input('변경할 메뉴 이름 입력: ')
+
+                        # Error 1. 이미 존재하는 이름
+                        if input_name in self.menu_manager.menu_items :
+                            print(f'이미 존재하는 메뉴 이름입니다. 다시 입력해주세요.\n')
+                            continue
+
+                        # 빈칸인 경우 그대로 원래 이름 사용
+                        if input_name == '' :
+                            input_name = menu_object_to_update.name
+
+                        input_cook_time = input('변경할 조리 시간 입력: ')
+                        try:
+                            if input_cook_time == '' : # 빈칸인 경우 그대로 사용
+                                input_cook_time = menu_object_to_update.cook_time
+                            else :
+                                int(input_cook_time)
+                        except ValueError:
+                            # Error 1. 정수가 아님
+                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                            continue
+                        if int(input_cook_time) < 0 :
+                            # Error 2. 음수
+                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                            continue
+
+                        input_price = input('변경할 메뉴 가격 입력: ')
+                        try:
+                            if input_price == '' : # 빈칸인 경우 그대로 사용
+                                input_price = menu_object_to_update.price
+                            else :
+                                int(input_price)
+                        except ValueError:
+                            # Error 1. 정수가 아님
+                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                            continue
+                        if int(input_price) < 0 :
+                            # Error 2. 음수
+                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                            continue
+
+                        # 정상 처리
+                        self.menu_manager.menu_items[input_name] = menu_object_to_update
+                        del self.menu_manager.menu_items[original_key]
+                        menu_object_to_update.name = input_name
+                        menu_object_to_update.cook_time = int(input_cook_time)
+                        menu_object_to_update.price = int(input_price)
+                        print('정상적으로 수정되었습니다.\n')
+                        break
+                    break
                 
             elif user_input == 4 :
                 print('이전 메뉴로 돌아갑니다.\n')
