@@ -8,11 +8,14 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 main_dir = os.path.join(current_dir, '..')
 sys.path.append(main_dir)
 
+from tabulate import tabulate
 from core.menu import MenuManager
+from core.order import OrderManager
 
 class main_service_menu :
-    def __init__(self, MenuManager):
+    def __init__(self, MenuManager, OrderManager):
         self.menu_manager = MenuManager
+        self.order_manager = OrderManager
         pass
 
     def user_input_process(self, input_count, operator_mode_flag=False):
@@ -94,9 +97,146 @@ class main_service_menu :
         Output
         ; 없음
         '''
-        self.menu_manager.print_menu_with_num_and_notime()
-        pass
+        menu_count = len(self.menu_manager.menu_items)
+        # Corner case. 메뉴가 존재하지 않는 경우
+        if menu_count == 0 :
+            print('메뉴가 존재하지 않습니다. 관리자에게 문의해주세요.\n')
+            return
 
+        order_menu_list = []
+        while True :
+            self.menu_manager.print_menu_with_num_and_notime()
+            user_input_name = input("주문할 메뉴를 선택해주세요: ")
+
+            # 1. 입력이 정수인 경우
+            try:
+                int(user_input_name)
+                # Corner Case. 입력이 잘못된 경우
+                if int(user_input_name) <= 0 or int(user_input_name) > menu_count :
+                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                    continue
+                selected_menu = list(self.menu_manager.menu_items.items())[int(user_input_name)-1]
+            # 2. 입력이 문자인경우
+            except ValueError : 
+                # Corner Case. 입력이 잘못된 경우
+                menu_object = self.menu_manager.menu_items.get(user_input_name) # get은 실패하면 None
+                if menu_object is not None :
+                    selected_menu = (user_input_name, menu_object)
+                else :
+                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                    continue
+            except IndexError :
+                print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                continue
+
+            user_input_count = input("주문할 수량을 선택해주세요: ")
+            try:
+                int(user_input_count)
+                if int(user_input_count) <= 0 :
+                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                    continue
+            except ValueError :
+                print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                continue
+            
+            # 정상 처리
+            print(f"{selected_menu[1].name} {int(user_input_count)}개 선택하셨습니다.")
+            while True:
+                user_input_checker = input("주문을 완료하시겠습니까? (Y/N): ")
+                try:
+                    if user_input_checker.lower() == "y" :
+                        break
+                    elif user_input_checker.lower() == "n" :
+                        break
+                    else :
+                        print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                        continue
+                except ValueError:
+                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                    continue
+            
+            print()
+            if user_input_checker.lower() == "n" :
+                continue
+            
+            # 주문 추가
+            current_menu_item = selected_menu[1]
+            current_menu_count = int(user_input_count)
+            found_in_list = False
+            # order_list를 순회하며 이미 해당 메뉴가 있는지 확인합니다.
+            for order_item_dict in order_menu_list:
+                # order_item_dict는 {MenuItem_object: count} 형태의 딕셔너리입니다.
+                if current_menu_item in order_item_dict:
+                    # 이미 메뉴가 존재하면 수량을 더합니다.
+                    order_item_dict[current_menu_item] += current_menu_count
+                    found_in_list = True
+                    break  # 해당 메뉴를 찾았으므로 루프를 종료합니다.
+            
+            if not found_in_list:
+                # 메뉴가 order_list에 없으면 새로 추가합니다.
+                order_menu_list.append({current_menu_item: current_menu_count})
+
+            # 현재까지 주문 리스트 출력
+            self.print_order_list(order_menu_list)
+
+            # 주문 계속 묻기
+            while True:
+                user_input_checker = input("주문을 계속하시겠습니까? (Y/N): ")
+                try:
+                    if user_input_checker.lower() == "y" :
+                        break
+                    elif user_input_checker.lower() == "n" :
+                        break
+                    else :
+                        print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                        continue
+
+                except ValueError:
+                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                    continue
+            if user_input_checker.lower() == "n" :
+                print()
+                # 주문을 더 이상 안할 시
+                # 결제 하고
+                self.order_payment(order_menu_list)
+                # 결제 완료되면 order 추가
+                self.order_manager.create_order(order_menu_list)
+                break
+            else :
+                print()
+                continue
+    
+    def print_order_list(self, order_list):
+        '''
+        order_list 리스트에 들어있는 주문 출력
+        '''
+        menu_num = 0
+        headers = ["#", "Menu Name", "Amount", "Price"]
+        table_data = []
+        for order in order_list :
+            menu_num += 1
+            menu_num_str = f"{menu_num:02d}"
+            menu_object = list(order.keys())[0]
+            menu_count = order[menu_object]
+            price_str = f"{menu_object.price * menu_count:,} won"
+            table_data.append([menu_num_str, menu_object.name, menu_count, price_str])
+
+        table_string = tabulate(table_data, headers=headers, tablefmt="orgtbl", colalign=("left", "left"))
+        table_width = len(table_string.splitlines()[0])
+        title_text = " Menu List "
+        title_dash_length = table_width - len(title_text)
+        formatted_title = f"{'-' * (int(title_dash_length / 2))}{title_text}{'-' * (int(title_dash_length / 2))}"        
+        bottom_border = "-" * table_width
+
+        print(formatted_title)
+        print(table_string)
+        print(bottom_border)
+
+    def order_payment(self, order_list):
+        '''
+        간단한 계산 시스템
+        '''
+        print('hi')
 
 #######################
 ### Operator System ###

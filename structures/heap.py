@@ -1,2 +1,2 @@
 class PriorityQueue:
-    
+    pass
