@@ -64,10 +64,13 @@ class main_service_menu :
         '''
         print('---------------- Main Menu ----------------')
         print('1 | Order Menu')
+        print('2 | Order List')
         print('-------------------------------------------')
-        user_input = self.user_input_process(1, operator_mode_flag=True)
+        user_input = self.user_input_process(2, operator_mode_flag=True)
         if user_input == 1 :
             self.user_order_system()
+        elif user_input == 2:
+            self.order_manager.print_order()
         elif user_input == 9999 :
             print('관리자 메뉴로 진입합니다.\n')
             system_off = self.operator_system() # 시스템 종료시 False 반환
