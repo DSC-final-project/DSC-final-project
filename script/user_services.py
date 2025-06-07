@@ -64,13 +64,10 @@ class main_service_menu :
         '''
         print('---------------- Main Menu ----------------')
         print('1 | Order Menu')
-        print('2 | Order List')
         print('-------------------------------------------')
-        user_input = self.user_input_process(2, operator_mode_flag=True)
+        user_input = self.user_input_process(1, operator_mode_flag=True)
         if user_input == 1 :
             self.user_order_system()
-        elif user_input == 2:
-            self.order_manager.print_order()
         elif user_input == 9999 :
             print('관리자 메뉴로 진입합니다.\n')
             system_off = self.operator_system() # 시스템 종료시 False 반환
@@ -249,7 +246,6 @@ class main_service_menu :
         '''
         간단한 계산 시스템
         '''
-        
         total_price = 0
         for order in order_menu_list :
             menu_object = list(order.keys())[0]
@@ -330,21 +326,61 @@ class main_service_menu :
         3. 주문 수정 + 삭제
         4. 뒤로가기
         '''
-        print('---------------- Order Menu ---------------')
-        print('1 | Make Order')
-        print('2 | Check Order')
-        print('3 | Modify Order')
-        print('4 | Previous Page')
-        print('-------------------------------------------')
+        first_run_counter = True # 입력 잘못했을때 or 초기 실행시만 메뉴 목록 출력하게 만들기
         while True :
-            user_input = self.user_input_process(4)
+            if first_run_counter == True :
+                print('---------------- Order Menu ---------------')
+                print('1 | Create Order')
+                print('2 | Print Order')
+                print('3 | Update Order')
+                print('4 | Delete Order')
+                print('5 | Previous Page')
+                print('-------------------------------------------')
+                first_run_counter = False # False이면 While loop을 돌아도 위 메뉴가 출력 안됨
+            
+            user_input = self.user_input_process(5)
             if user_input == 1 :
-                pass
+                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                self.user_order_system() # 일반적으로 관리자 모드에서 여기에 접근할 필요 없음
+
             elif user_input == 2 :
-                pass
-            elif user_input == 3 :
-                pass
-            elif user_input == 4 :
+                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                self.order_manager.print_order() # 우선은 모든 주문에 대한 정보 출력
+                continue
+                # 현재 Queue에 들어가있는 주문도 볼 수 있도록 추후 구현해야함
+
+            elif user_input == 3 : # 주문 수정
+                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+                order_count = len(self.order_manager.orders)
+                # Corner Case. 주문이 없는 경우
+                if order_count == 0 : 
+                    print('주문이 존재하지 않습니다.\n')
+                    continue
+                
+                while True :
+                    self.order_manager.print_order_with_previous_page() # 주문이 존재하면, 일단 주문 목록 출력
+                    update_input = input("수정할 주문을 선택하세요: ")
+                    try :
+                        int(update_input)
+                        if update_input == '-1' : # 돌아가기 선택
+                            print('이전 메뉴로 돌아갑니다.\n')
+                            break
+                        elif update_input <= '0' or int(update_input) > order_count : # 잘못된 범위
+                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                            continue
+                        else :
+                            selected_order = self.order_manager.orders[int(update_input)-1]
+                            self.order_manager.update_order(selected_order)
+                    except ValueError :
+                        print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                        continue
+                
+
+            elif user_input == 4 : # 주문 삭제
+                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
+
+            elif user_input == 5 :
+                # 뒤로가기
                 print('이전 메뉴로 돌아갑니다.\n')
                 break
             else :

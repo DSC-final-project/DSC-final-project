@@ -148,3 +148,89 @@ class OrderManager:
         bottom_border = "-" * max_table_width
         print(bottom_border)
         print()
+
+    def print_order_with_previous_page(self):
+        '''
+        print인데 뒤로가기 버튼도 출력
+        '''
+        if not self.orders:
+            print("현재 주문 내역이 없습니다.\n")
+            return
+    
+        headers = ["Order ID", "Menu Item", "Cook Time"]
+        colalign = ("right", "left", "left")
+        tablefmt = "orgtbl"
+    
+        # 헤더를 기반으로 테이블 전체 너비 계산
+        # tabulate 라이브러리가 빈 데이터([])와 colalign을 함께 사용할 때 IndexError가 발생할 수 있으므로,
+        # 헤더와 동일한 수의 컬럼을 가진 더미 행을 제공하여 문제를 회피합니다.
+        dummy_row_for_width_calc = [[""] * len(headers)]
+        header_table_string_for_width = tabulate(dummy_row_for_width_calc, headers=headers, tablefmt=tablefmt, colalign=colalign)
+        if not header_table_string_for_width.splitlines():
+            print("주문 목록을 표시하는 중 오류가 발생했습니다. (너비 계산 불가)\n")
+            return
+        max_table_width = len(header_table_string_for_width.splitlines()[0])
+    
+        # 사용자 정의 구분선 (center_border 스타일)
+        # 다른 print 함수들과의 일관성을 위해 `|`로 감싸고 내부를 `-`로 채웁니다.
+        # 순수 대시 라인을 원하시면: custom_separator_line = "-" * max_table_width
+        custom_separator_line = f"|{'-' * (max_table_width - 2)}|"
+    
+        # 테이블 제목 출력
+        title_text = " Order List "
+        title_dash_length = max(0, max_table_width - len(title_text))
+        left_dashes = title_dash_length // 2
+        right_dashes = title_dash_length - left_dashes
+        formatted_title = f"{'-' * left_dashes}{title_text}{'-' * right_dashes}"
+        print(f"\n{formatted_title}")
+    
+        # 헤더 출력 (tabulate를 사용하여 orgtbl의 헤더 스타일 적용)
+        header_lines = header_table_string_for_width.splitlines()
+        print(header_lines[0]) # 헤더 텍스트 라인
+        print(header_lines[1]) # 헤더 구분선 라인 (|---+---+---|)
+    
+        sorted_order_ids = sorted(self.orders.keys())
+    
+        for i, order_id in enumerate(sorted_order_ids):
+            order_obj = self.orders[order_id]
+            current_order_data_rows = []
+    
+            if not order_obj.menu_list:
+                # order_id를 문자열로 변환
+                current_order_data_rows.append([str(order_obj.order_id), "주문된 메뉴 없음", ""])
+            else:
+                for item_idx, menu_item_obj in enumerate(order_obj.menu_list):
+                    # order_id를 문자열로 변환
+                    order_id_to_display = str(order_obj.order_id) if item_idx == 0 else ""
+                    # menu_item_obj가 MenuItem 인스턴스이고 필요한 속성을 가지고 있는지 확인 (방어적 코딩)
+                    menu_name = getattr(menu_item_obj, 'name', '알 수 없는 메뉴') # 속성이 없으면 '알 수 없는 메뉴' 반환
+                    cook_time = getattr(menu_item_obj, 'cook_time', 0) # 속성이 없으면 0 반환
+                    cook_time_str = f"{cook_time} min"
+                    current_order_data_rows.append([order_id_to_display, menu_name, cook_time_str])
+    
+            if current_order_data_rows:
+                # 현재 주문의 데이터 행들만 tabulate로 포맷팅 (헤더 없이)
+                # orgtbl 포맷으로 각 주문 데이터를 포맷팅하되, 실제 출력은 데이터 라인만 가져옴
+                # 컬럼 너비 일관성을 위해 headers를 전달하여 tabulate가 너비를 맞추도록 유도
+                order_block_table_str = tabulate(current_order_data_rows, headers=headers, tablefmt=tablefmt, colalign=colalign)
+                order_block_lines = order_block_table_str.splitlines()
+                for line_idx in range(2, len(order_block_lines)): # 각 블록의 헤더와 그 구분선은 제외하고 데이터 라인만 출력
+                    print(order_block_lines[line_idx])
+    
+            # 마지막 주문이 아닐 경우 사용자 정의 구분선 추가
+            if i < len(sorted_order_ids) - 1:
+                print(custom_separator_line)
+    
+        # 전체 테이블의 하단 테두리
+        bottom_border = "-" * max_table_width
+        print(bottom_border)
+        
+        # 뒤로가기
+        cell1_content = " -1         "
+        cell2_content = " Previous Page"
+        fixed_part_length = len("|") + len(cell1_content) + len("|") + len("|")
+        cell2_width = max_table_width - fixed_part_length
+        footer_text = f"|{cell1_content}|{cell2_content:<{cell2_width}}|"
+        print(footer_text)
+        print(bottom_border)
+        print()
