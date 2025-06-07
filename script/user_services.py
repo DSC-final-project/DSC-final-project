@@ -206,7 +206,7 @@ class main_service_menu :
                 print()
                 continue
     
-    def print_order_list(self, order_list):
+    def print_order_list(self, order_menu_list):
         '''
         order_list 리스트에 들어있는 주문 출력
         '''
@@ -214,7 +214,7 @@ class main_service_menu :
         headers = ["#", "Menu Name", "Amount", "Price"]
         table_data = []
         total_price = 0
-        for order in order_list :
+        for order in order_menu_list :
             menu_num += 1
             menu_num_str = f"{menu_num:02d}"
             menu_object = list(order.keys())[0]
@@ -242,10 +242,19 @@ class main_service_menu :
         print(footer_text)
         print(bottom_border)
 
-    def order_payment(self, order_list):
+    def order_payment(self, order_menu_list):
         '''
         간단한 계산 시스템
         '''
+        
+        total_price = 0
+        for order in order_menu_list :
+            menu_object = list(order.keys())[0]
+            menu_count = order[menu_object]
+            total_price += menu_object.price * menu_count
+        print('--------------- Payment -------------------')
+        print(f' Total Price: {total_price:,} won')
+        print('-------------------------------------------')
         print('hi')
 
 
