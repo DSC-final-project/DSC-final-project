@@ -15,43 +15,15 @@ class main_service_menu :
         self.menu_manager = MenuManager
         pass
 
-    def user_input_process(self, input_count):
+    def user_input_process(self, input_count, operator_mode_flag=False):
         '''
         사용자의 입력 처리 함수
         모든 서비스 선택 관련 입력은 여기서 진행하고, 오류 처리도 진행
-
-        Input
-        ; input_count - 입력의 갯수가 총 몇개인지
-        Output
-        ; 선택한 메뉴의 번호
-        '''
-        while True:
-            user_input = input('메뉴를 선택해주세요: ')
-            # Case 1. 입력이 정수가 아닌 경우
-            try:
-                int(user_input)
-            except ValueError:
-                print('잘못된 입력입니다. 다시 시도해주세요.\n')
-                continue
-
-            # Case 2. 입력이 주어진 범위를 벗어나는 경우
-            if not (int(user_input) > 0 and int(user_input) <= input_count) :
-                print('잘못된 입력입니다. 다시 시도해주세요.\n')
-                continue
-
-            # Case 3. 정상 처리
-            print()
-            break
-        return int(user_input)
-    
-    def user_input_process_with_hidden_menu(self, input_count):
-        '''
-        사용자의 입력 처리 함수
-        여기에 hidden menu 선택지 잇음
         9999 입력시 관리자 메뉴로 돌입
 
         Input
         ; input_count - 입력의 갯수가 총 몇개인지
+        ; operator_mode_flag - 관리자 메뉴를 접근하는 경우 확인, True면 9999 입력 가능
         Output
         ; 선택한 메뉴의 번호
         '''
@@ -63,14 +35,17 @@ class main_service_menu :
             except ValueError:
                 print('잘못된 입력입니다. 다시 시도해주세요.\n')
                 continue
-
-            # Case 2. 입력이 주어진 범위를 벗어나는 경우
-            if not (int(user_input) > 0 and int(user_input) <= input_count) :
-                if not int(user_input) == 9999 :
-                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
-                    continue
             
-            # Case 3. 정상 처리
+            # Case 2. 관리자 모드
+            if operator_mode_flag == True and int(user_input) == 9999:
+                return int(user_input)
+            
+            # Case 3. 입력이 주어진 범위를 벗어나는 경우
+            if not (int(user_input) > 0 and int(user_input) <= input_count) :
+                print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                continue
+
+            # Case 4. 정상 처리
             print()
             break
         return int(user_input)
@@ -87,7 +62,7 @@ class main_service_menu :
         print('---------------- Main Menu ----------------')
         print('1 | Order Menu')
         print('-------------------------------------------')
-        user_input = self.user_input_process_with_hidden_menu(1)
+        user_input = self.user_input_process(1, operator_mode_flag=True)
         if user_input == 1 :
             self.user_order_system()
         elif user_input == 9999 :
@@ -110,29 +85,30 @@ class main_service_menu :
         ; True - Program off 메뉴 접근 시
         ; False - Previous Page 메뉴 접근 시
         '''
-        print('-------------- Operator Menu --------------')
-        print('1 | Order Management')
-        print('2 | Menu Management')
-        print('3 | Tick Process')
-        print('4 | Program Off')
-        print('5 | Previous Page')
-        print('-------------------------------------------')
-        user_input = self.user_input_process(5)
-        if user_input == 1 :
-            self.order_system()
-        elif user_input == 2 :
-            self.menu_system()
-        elif user_input == 3 :
-            self.tick_system()
-        elif user_input == 4 :
-            self.end_system()
-            return True
-        elif user_input == 5 :
-            return False
-        else :
-            # 이 부분은 일반적으로는 접근 불가능해야함.
-            print('Critical Error')
-        return False
+        while True :
+            print('-------------- Operator Menu --------------')
+            print('1 | Order Management')
+            print('2 | Menu Management')
+            print('3 | Tick Process')
+            print('4 | Program Off')
+            print('5 | Previous Page')
+            print('-------------------------------------------')
+            
+            user_input = self.user_input_process(5)
+            if user_input == 1 :
+                self.order_system()
+            elif user_input == 2 :
+                self.menu_system()
+            elif user_input == 3 :
+                self.tick_system()
+            elif user_input == 4 :
+                self.end_system()
+                return True
+            elif user_input == 5 :
+                return False
+            else :
+                # 이 부분은 일반적으로는 접근 불가능해야함.
+                print('Critical Error')
 
     def user_order_system(self) :
         '''
@@ -201,9 +177,9 @@ class main_service_menu :
                     menu_count = len(self.menu_manager.menu_items)
                     if menu_count != 0 :
                         self.menu_manager.print_menu()
-                    input_name = input('메뉴 이름 입력: ')
-                    input_cook_time = input('조리 시간 입력: ')
-                    input_price = input('메뉴 가격 입력: ')
+                    input_name = input('추가할 메뉴 이름 입력: ')
+                    input_cook_time = input('추가할 조리 시간 입력: ')
+                    input_price = input('추가할 메뉴 가격 입력: ')
 
                     create_checker = self.menu_manager.create_menu(input_name, input_cook_time, input_price)
                     if create_checker == -1 :
