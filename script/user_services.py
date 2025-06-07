@@ -255,7 +255,30 @@ class main_service_menu :
         print('--------------- Payment -------------------')
         print(f' Total Price: {total_price:,} won')
         print('-------------------------------------------')
-        print('hi')
+        while True : # 계산 완료 loop
+            user_pay_input = input("결제할 금액을 입력해주세요: ")
+            try:
+                if (int(user_pay_input) <= 0) :
+                    print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                    continue
+            except ValueError: # 정수 입력이 아닐 시
+                print('잘못된 입력입니다. 다시 시도해주세요.\n')
+                continue
+                
+            if int(user_pay_input) > total_price :
+                print('게산이 완료되었습니다.')
+                print(f'거스름돈: {int(user_pay_input) - total_price:,} 원\n')
+                total_price = 0
+            elif int(user_pay_input) == total_price :
+                print('게산이 완료되었습니다.\n')
+                total_price = 0
+            else :
+                print('금액이 부족합니다. 추가로 결제해주세요.')
+                total_price -= int(user_pay_input)
+                print(f'남은 금액: {total_price:,} 원\n')
+            
+            if total_price == 0 :
+                break
 
 
 #######################
