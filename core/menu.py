@@ -188,3 +188,29 @@ class MenuManager:
         print(bottom_middle_border)
         print(footer_text)
         print(bottom_border)
+
+    def print_menu_with_num_and_notime(self):
+        '''
+        메뉴 목록을 리스트로 출력하면서, 번호도 매겨줌
+        조리 시간은 출력 안함
+        끝에 print() 안함
+        '''
+        menu_num = 0
+        headers = ["#", "Menu Name", "Price"]
+        table_data = []
+        for menu, dict in self.menu_items.items() :
+            menu_num += 1
+            menu_num_str = f"{menu_num:02d}"
+            price_str = f"{dict.price:,} won"
+            table_data.append([menu_num_str, dict.name, price_str])
+        
+        table_string = tabulate(table_data, headers=headers, tablefmt="orgtbl", colalign=("left", "left"))
+        table_width = len(table_string.splitlines()[0])
+        title_text = " Menu List "
+        title_dash_length = table_width - len(title_text)
+        formatted_title = f"{'-' * (int(title_dash_length / 2))}{title_text}{'-' * (int(title_dash_length / 2))}"        
+        bottom_border = "-" * table_width
+
+        print(formatted_title)
+        print(table_string)
+        print(bottom_border)

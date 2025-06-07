@@ -76,6 +76,32 @@ class main_service_menu :
             print('Critical Error')
         return True
 
+    def user_order_system(self) :
+        '''
+        사용자 주문 관련 시스템
+        키오스크를 누르면 일단 메뉴가 쭉 뜨고, 메뉴 가격이 뜨고
+        어떤 메뉴를 몇개
+        현재 추가한 메뉴 출력해주고
+        메뉴 수정 가능하게 해주고
+        메뉴 삭제되게 해주고
+        주문 완료 누르면
+        최종 확인 해주고
+        돌아갈 수 있게 해주고
+        완료되면 달아주기
+
+        Input
+        ; 없음
+        Output
+        ; 없음
+        '''
+        self.menu_manager.print_menu_with_num_and_notime()
+        pass
+
+
+#######################
+### Operator System ###
+#######################
+
     def operator_system(self) :
         '''
         관리자 전용 메뉴
@@ -109,13 +135,6 @@ class main_service_menu :
             else :
                 # 이 부분은 일반적으로는 접근 불가능해야함.
                 print('Critical Error')
-
-    def user_order_system(self) :
-        '''
-        사용자 주문 관련 시스템
-        '''
-        print('hi')
-        pass
 
     def order_system(self) :
         '''
