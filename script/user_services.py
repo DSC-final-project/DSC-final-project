@@ -213,6 +213,7 @@ class main_service_menu :
         menu_num = 0
         headers = ["#", "Menu Name", "Amount", "Price"]
         table_data = []
+        total_price = 0
         for order in order_list :
             menu_num += 1
             menu_num_str = f"{menu_num:02d}"
@@ -220,16 +221,25 @@ class main_service_menu :
             menu_count = order[menu_object]
             price_str = f"{menu_object.price * menu_count:,} won"
             table_data.append([menu_num_str, menu_object.name, menu_count, price_str])
+            total_price += menu_object.price * menu_count
 
         table_string = tabulate(table_data, headers=headers, tablefmt="orgtbl", colalign=("left", "left"))
         table_width = len(table_string.splitlines()[0])
         title_text = " Menu List "
         title_dash_length = table_width - len(title_text)
         formatted_title = f"{'-' * (int(title_dash_length / 2))}{title_text}{'-' * (int(title_dash_length / 2))}"        
-        bottom_border = "-" * table_width
-
+        center_border = f"|{'-'*(table_width-2)}|"
+        cell1_content = " Total Price: "
+        cell2_content = f"{total_price:,} won"
+        fixed_part_length = len("|") + len(cell1_content) + len("|")
+        cell2_width = table_width - fixed_part_length
+        footer_text = f"|{cell1_content}{cell2_content:<{cell2_width}}|"
+        bottom_border = '-' * table_width
+        
         print(formatted_title)
         print(table_string)
+        print(center_border)
+        print(footer_text)
         print(bottom_border)
 
     def order_payment(self, order_list):
@@ -237,6 +247,7 @@ class main_service_menu :
         간단한 계산 시스템
         '''
         print('hi')
+
 
 #######################
 ### Operator System ###
