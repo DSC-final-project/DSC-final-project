@@ -63,11 +63,14 @@ class main_service_menu :
         ; 없음
         '''
         print('---------------- Main Menu ----------------')
-        print('1 | Order Menu')
+        print('1 | Order')
+        print('2 | Order Check')
         print('-------------------------------------------')
-        user_input = self.user_input_process(1, operator_mode_flag=True)
+        user_input = self.user_input_process(2, operator_mode_flag=True)
         if user_input == 1 :
             self.user_order_system()
+        elif user_input == 2 :
+            self.user_order_check()
         elif user_input == 9999 :
             print('관리자 메뉴로 진입합니다.\n')
             system_off = self.operator_system() # 시스템 종료시 False 반환
@@ -209,6 +212,7 @@ class main_service_menu :
     def print_order_list(self, order_menu_list):
         '''
         order_list 리스트에 들어있는 주문 출력
+        사용자가 order를 만들 때 사용하는 함수, 현재까지 order의 목록을 출력
         '''
         menu_num = 0
         headers = ["#", "Menu Name", "Amount", "Price"]
@@ -279,7 +283,13 @@ class main_service_menu :
             if total_price == 0 :
                 break
 
-
+    def user_order_check(self) :
+        '''
+        사용자가 order를 확인할 수 있도록 해줌
+        사용자의 주문 내용을 메뉴 - 개수 - 금액 - 예상 완료 시간(모든 메뉴가 제작중이라면)
+        만약 주문의 메뉴 중 제작중이 아닌 메뉴가 있다면 예상 완료 시간은 표시 x
+        주문의 메뉴가 전부 제작중이라면 가장 오래 남은 시간을 기준으로 주문 완성 시간 표시
+        '''
 #######################
 ### Operator System ###
 #######################
