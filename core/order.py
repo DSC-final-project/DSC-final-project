@@ -24,6 +24,7 @@ class OrderManager:
     def create_order(self, menu_name, time):
         menu = self.menu_manager.menu_items.get(menu_name)
         order = Order(self.order_counter, menu, time)
+        
         order.start_time = time
         order.estimated_finish_time = time + menu.cook_time
 
