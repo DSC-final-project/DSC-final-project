@@ -69,6 +69,17 @@ class Order:
             self.status = 'pending'
             self.estimated_completion_time = None # 아직 시작 전이므로 예상 시간 계산 불가
 
+    def get_item_details_for_modification_display(self):
+        """
+        Returns a list of tuples for display in user_services update menu.
+        Each tuple: (item_name, item_status, original_index_in_menu_items_list, item_price)
+        """
+        details = []
+        for i, menu_item in enumerate(self.menu_items):
+            # Storing original_index (i) is useful for mapping display choice back to actual item
+            details.append((menu_item.name, self.item_status[i], i, menu_item.price))
+        return details
+
 
 class OrderManager:
     def __init__(self, menu_manager, cooking_slots_capacity=10): # 기본 10개의 조리 슬롯
@@ -147,24 +158,31 @@ class OrderManager:
     def schedule_new_items_to_cook(self, current_time: int):
         """대기 중인 주문들의 아이템을 빈 조리 슬롯에 할당합니다."""
         print(f"  OrderManager: Scheduling new items at time {current_time}.")
-        
-        can_schedule_more = True
-        orders_checked_in_queue = 0 
-        
+
+        # To prevent an infinite loop if an order at the head of the queue
+        # cannot be processed (e.g., no items scheduled for it) and is not dequeued,
+        # this tracks the ID of such an order. If we see it again immediately without progress, we stop.
+        stuck_order_id_at_head = None
+
         while len(self.cooking_slots) < self.cooking_slots.capacity and \
-              not self.waiting_orders_queue.is_empty() and \
-              can_schedule_more and \
-              orders_checked_in_queue < len(self.waiting_orders_queue):
-            
+              not self.waiting_orders_queue.is_empty():
+
             order_id_to_process = self.waiting_orders_queue.peek()
+
+            if stuck_order_id_at_head == order_id_to_process:
+                # We've already tried this order in this scheduling cycle, made no progress,
+                # and it's still at the head. Break to prevent an infinite loop.
+                print(f"    Order ID {order_id_to_process} is still at head with no progress made in this cycle. Breaking scheduling.")
+                break
+
             order = self.orders[order_id_to_process]
-            
+            print(f"    Considering Order ID: {order_id_to_process} (Status: {order.status}, Items: {len(order.menu_items)})")
+
             item_scheduled_this_iteration = False
             for item_idx, status in enumerate(order.item_status):
                 if status == 'waiting':
                     if len(self.cooking_slots) < self.cooking_slots.capacity:
                         menu_item_obj = order.menu_items[item_idx]
-                        
                         order.item_status[item_idx] = 'cooking'
                         order.item_cook_start_time[item_idx] = current_time
                         
@@ -175,15 +193,25 @@ class OrderManager:
                         item_scheduled_this_iteration = True
                         if order.status == 'pending': 
                             order.status = 'in_progress'
+                        stuck_order_id_at_head = None # Progress was made, so reset the stuck flag
                     else:
-                        can_schedule_more = False 
+                        print(f"      No more cooking slots during Order {order_id_to_process}. Breaking item loop.")
                         break 
-            
-            orders_checked_in_queue += 1
+
             if all(s != 'waiting' for s in order.item_status):
+                # All items for this order are now cooking or completed
                 self.waiting_orders_queue.dequeue()
-            elif not item_scheduled_this_iteration and not can_schedule_more:
-                break 
+                print(f"    All items for Order {order_id_to_process} are now scheduled/completed. Dequeued.")
+                stuck_order_id_at_head = None # Head of queue changed
+            elif not item_scheduled_this_iteration:
+                # No items were scheduled for this order in this pass.
+                # It remains at the head. Mark it as potentially stuck.
+                print(f"    No items scheduled for Order {order_id_to_process} in this pass. It remains at head.")
+                stuck_order_id_at_head = order_id_to_process
+            else:
+                # Items were scheduled, but the order is not fully done. It remains at head.
+                # Since progress was made, reset stuck_order_id_at_head.
+                stuck_order_id_at_head = None
 
     def update_all_order_details(self, current_time: int):
         """모든 주문의 상태 및 예상 시간을 업데이트합니다 (주로 표시용)."""
@@ -221,28 +249,6 @@ class OrderManager:
         return "\n".join(details)
 
     def print_all_orders_summary(self):
-        print(f"\n--- Orders Summary at Time {self.current_time} ---")
-        if not self.orders:
-            print("No orders in the system.")
-            return
-
-        headers = ["Order ID", "Status", "Order Time", "Est. Finish", "Actual Finish", "Items"]
-        table_data = []
-        for order_id in sorted(self.orders.keys()):
-            order = self.orders[order_id]
-            order.update_order_status_and_estimates(self.current_time) 
-            num_items = len(order.menu_items)
-            items_summary = f"{sum(1 for s in order.item_status if s == 'completed')}/{num_items} done"
-            table_data.append([
-                order.order_id,
-                order.status,
-                order.order_time,
-                order.estimated_completion_time if order.estimated_completion_time is not None and order.estimated_completion_time != float('inf') else "N/A",
-                order.actual_completion_time if order.actual_completion_time is not None else "N/A",
-                items_summary
-            ])
-        print(tabulate(table_data, headers=headers, tablefmt="grid"))
-
         print("\n--- Cooking Slots ---")
         if self.cooking_slots.is_empty():
             print("All cooking slots are free.")
@@ -258,20 +264,225 @@ class OrderManager:
             print("Waiting queue is empty.")
         else:
             print(f"  Order IDs in waiting queue: {[q_order_id for q_order_id in list(self.waiting_orders_queue.queue)]}")
-        print("--------------------------------\n")
+        print("--------------------------------")
 
-    def update_order(self, order_id, new_menu_name) -> bool:
-        print(f"Warning: update_order for order {order_id} is not fully implemented for timed simulation.")
-        return False
+        print(f"\n--- Orders Summary at Time {self.current_time} ---")
+        if not self.orders:
+            print("No orders in the system.")
+            return
 
-    def delete_order(self, order_id_to_delete: int) -> bool:
+        headers = ["Order ID", "Status", "Order Time", "Est. Finish", "Actual Finish", "Items"]
+        table_data = []
+        for order_id in sorted(self.orders.keys()):
+            order = self.orders[order_id]
+            order.update_order_status_and_estimates(self.current_time) 
+            
+            items_display_list = []
+            if order.menu_items:
+                num_total_items = len(order.menu_items)
+                num_completed_items = sum(1 for s in order.item_status if s == 'completed')
+                items_display_list.append(f"{num_completed_items}/{num_total_items} done")
+                for i, menu_item_obj in enumerate(order.menu_items):
+                    items_display_list.append(f"  - {menu_item_obj.name}: {order.item_status[i]}")
+            else:
+                items_display_list.append("No items (Order Empty/Deleted)")
+            
+            table_data.append([
+                order.order_id,
+                order.status,
+                order.order_time,
+                order.estimated_completion_time if order.estimated_completion_time is not None and order.estimated_completion_time != float('inf') else "N/A",
+                order.actual_completion_time if order.actual_completion_time is not None else "N/A",
+                "\n".join(items_display_list) # 각 아이템 정보를 개행으로 연결
+            ])
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+        print()
+
+    def _remove_item_from_cooking_slot_by_order_item_idx(self, order_id: int, item_idx_in_order: int):
+        """
+        Removes a specific item of an order from the cooking_slots.
+        Returns True if removed, False otherwise.
+        """
+        item_found_and_removed = False
+        new_cooking_heap = []
+        # Directly access and rebuild the heap
+        current_heap = list(self.cooking_slots.heap) 
+        self.cooking_slots.heap.clear()
+
+        for slot_item_tuple in current_heap:
+            _slot_finish_time, slot_order_id, slot_item_idx = slot_item_tuple
+            if slot_order_id == order_id and slot_item_idx == item_idx_in_order:
+                item_found_and_removed = True
+                # print(f"    DEBUG: Item (Order {order_id}, ItemIdx {item_idx_in_order}) removed from cooking slot.")
+            else:
+                new_cooking_heap.append(slot_item_tuple)
+        
+        self.cooking_slots.heap = new_cooking_heap
+        heapq.heapify(self.cooking_slots.heap) 
+        if item_found_and_removed:
+            print(f"  Item (Order {order_id}, ItemIdx {item_idx_in_order}) was cooking and has been removed from slot.")
+        return item_found_and_removed
+
+    def _adjust_cooking_slot_indices_after_delete(self, order_id_affected: int, deleted_item_original_idx: int):
+        """
+        After an item is deleted from an order's menu_items list at deleted_item_original_idx,
+        this method updates the item_idx for other items of the SAME order
+        that are still in cooking_slots and had an original index
+        greater than the deleted item_original_idx.
+        Their stored item_idx needs to be decremented by 1.
+        """
+        # print(f"    DEBUG: Adjusting cooking slot indices for Order {order_id_affected} after deletion of item at original index {deleted_item_original_idx}.")
+        rebuild_heap = False
+        new_heap_elements = []
+        
+        current_heap = list(self.cooking_slots.heap)
+        self.cooking_slots.heap.clear() # Prepare to rebuild
+
+        for slot_tuple in current_heap:
+            finish_time, order_id_in_slot, item_idx_in_slot = slot_tuple
+            if order_id_in_slot == order_id_affected and item_idx_in_slot > deleted_item_original_idx:
+                new_item_idx = item_idx_in_slot - 1
+                new_heap_elements.append((finish_time, order_id_in_slot, new_item_idx))
+                rebuild_heap = True
+            else:
+                new_heap_elements.append(slot_tuple)
+        
+        self.cooking_slots.heap = new_heap_elements
+        if rebuild_heap: # Only heapify if changes were made
+            heapq.heapify(self.cooking_slots.heap)
+
+    def _ensure_order_in_waiting_queue(self, order_id: int):
+        """
+        Ensures an order is in the waiting queue, typically at the end if re-added.
+        This is called after modifications that might introduce 'waiting' items or change priority.
+        """
+        order = self.orders.get(order_id)
+        if not order:
+            return
+
+        # Remove from waiting queue if it exists, to re-add at the end
+        current_q_list = list(self.waiting_orders_queue.queue) # Get a list copy
+        self.waiting_orders_queue.queue.clear() # Clear original deque
+        
+        order_was_in_queue = False
+        for oid_in_q in current_q_list:
+            if oid_in_q == order_id:
+                order_was_in_queue = True
+            else:
+                self.waiting_orders_queue.enqueue(oid_in_q) # Re-add other orders
+        
+        # If the order has waiting items or is pending, and not yet completed/ready, add it to the queue.
+        if order.menu_items and order.status not in ['ready', 'completed'] and \
+           (order.status == 'pending' or any(s == 'waiting' for s in order.item_status)):
+            self.waiting_orders_queue.enqueue(order_id)
+            # print(f"    DEBUG: Order {order_id} ensured in waiting queue (was_in_queue: {order_was_in_queue}). Status: {order.status}")
+
+    def modify_specific_item_in_order(self, order_id: int, item_idx_in_order: int, new_menu_item_obj=None, delete_item_flag=False):
+        """
+        Modifies or deletes a specific item in an order.
+        Returns: (success_bool, price_difference_int)
+                 price_difference = new_price - old_price (negative for refund if deleted/cheaper)
+        """
+        if order_id not in self.orders:
+            print(f"  Error: Order {order_id} not found for modification.")
+            return False, 0
+
+        order = self.orders[order_id]
+
+        if not (0 <= item_idx_in_order < len(order.menu_items)):
+            print(f"  Error: Invalid item index {item_idx_in_order} for Order {order_id}.")
+            return False, 0
+
+        original_item_status = order.item_status[item_idx_in_order]
+        original_menu_item = order.menu_items[item_idx_in_order]
+        price_difference = 0
+
+        if original_item_status == 'completed':
+            print(f"  Error: Item '{original_menu_item.name}' in Order {order_id} (Idx {item_idx_in_order}) is 'completed' and cannot be modified.")
+            return False, 0
+
+        if original_item_status == 'cooking':
+            self._remove_item_from_cooking_slot_by_order_item_idx(order_id, item_idx_in_order)
+            # Item state will be reset to 'waiting'
+
+        if delete_item_flag:
+            price_difference = -original_menu_item.price # Refund for the deleted item
+            print(f"  Deleting item '{original_menu_item.name}' (Original Idx {item_idx_in_order}) from Order {order_id}.")
+            
+            order.menu_items.pop(item_idx_in_order)
+            order.item_status.pop(item_idx_in_order)
+            order.item_cook_start_time.pop(item_idx_in_order)
+            order.item_remaining_cook_time.pop(item_idx_in_order)
+
+            # Adjust indices for other items of THE SAME ORDER in cooking_slots
+            self._adjust_cooking_slot_indices_after_delete(order_id, item_idx_in_order)
+            
+            if not order.menu_items:
+                print(f"  Order {order_id} is now empty after item deletion.")
+        elif new_menu_item_obj:
+            price_difference = new_menu_item_obj.price - original_menu_item.price
+            print(f"  Changing item '{original_menu_item.name}' to '{new_menu_item_obj.name}' in Order {order_id} (Idx {item_idx_in_order}).")
+            order.menu_items[item_idx_in_order] = new_menu_item_obj
+            order.item_status[item_idx_in_order] = 'waiting' # Changed/modified item goes to waiting
+            order.item_cook_start_time[item_idx_in_order] = None
+            order.item_remaining_cook_time[item_idx_in_order] = new_menu_item_obj.cook_time
+        else:
+            print("  Error: No modification action specified (delete or change) for item.")
+            return False, 0
+
+        order.update_order_status_and_estimates(self.current_time)
+        self._ensure_order_in_waiting_queue(order_id) # Re-evaluate its position or add if needed
+        self.schedule_new_items_to_cook(self.current_time)
+
+        print(f"  Order {order_id} item modification processed. Price difference: {price_difference}")
+        return True, price_difference
+
+    def add_new_item_to_order(self, order_id: int, menu_item_obj_to_add, quantity: int):
+        if order_id not in self.orders:
+            print(f"  Error: Order {order_id} not found for adding new item.")
+            return False
+        
+        if not menu_item_obj_to_add or quantity <= 0:
+            print(f"  Error: Invalid menu item or quantity for adding to Order {order_id}.")
+            return False
+
+        order = self.orders[order_id]
+        print(f"  Adding {quantity} of '{menu_item_obj_to_add.name}' to Order {order_id}.")
+        for _ in range(quantity):
+            order.menu_items.append(menu_item_obj_to_add)
+            order.item_status.append('waiting')
+            order.item_cook_start_time.append(None)
+            order.item_remaining_cook_time.append(menu_item_obj_to_add.cook_time)
+
+        if order.status in ['ready', 'completed']: # If order was considered done
+            order.status = 'pending' # It's no longer fully ready/completed
+            order.actual_completion_time = None # Reset actual completion
+
+        order.update_order_status_and_estimates(self.current_time)
+        self._ensure_order_in_waiting_queue(order_id) # Ensure it's (re)queued, likely at the end
+        self.schedule_new_items_to_cook(self.current_time)
+        return True
+
+    def delete_order(self, order_id_to_delete: int) -> tuple[bool, int]:
+        """
+        Deletes an order from the system.
+        Returns: (success_bool, refund_amount_int)
+        """
         print(f"Attempting to delete Order ID: {order_id_to_delete} at time {self.current_time}")
         if order_id_to_delete not in self.orders:
             print(f"  Order {order_id_to_delete} not found.")
-            return False
+            return False, 0
 
-        # order = self.orders[order_id_to_delete] # Not strictly needed if just removing
+        order_to_delete = self.orders[order_id_to_delete]
+        order_to_delete.update_order_status_and_estimates(self.current_time) # Ensure status is current
 
+        if order_to_delete.status in ['completed', 'ready']:
+            print(f"  Order {order_id_to_delete} is already '{order_to_delete.status}' and cannot be deleted/refunded.")
+            return False, 0
+
+        # Calculate refund amount (total price of all items in the order)
+        refund_amount = sum(item.price for item in order_to_delete.menu_items)
+        
         new_cooking_heap = []
         items_removed_from_cooking = 0
         while not self.cooking_slots.is_empty():
@@ -302,7 +513,32 @@ class OrderManager:
         print(f"  Order {order_id_to_delete} deleted from main order list.")
         # Attempt to schedule new items as slots might have opened up
         self.schedule_new_items_to_cook(self.current_time)
-        return True
+        return True, refund_amount
+
+    def is_menu_item_active_in_orders(self, menu_item_name_to_check: str) -> bool:
+        """
+        Checks if a given menu item name is part of any order that is currently
+        in the waiting queue or has items cooking in the cooking slots.
+        This helps prevent modification/deletion of menu items that are actively being processed.
+        """
+        # Check orders in the waiting queue
+        for order_id_in_waiting_q in list(self.waiting_orders_queue.queue):
+            order = self.orders.get(order_id_in_waiting_q)
+            if order:
+                for item in order.menu_items:
+                    if item.name == menu_item_name_to_check:
+                        print(f"DEBUG: Menu item '{menu_item_name_to_check}' found in waiting Order ID {order_id_in_waiting_q}.")
+                        return True
+
+        # Check items currently in cooking slots
+        for _, order_id_in_cooking, item_idx_in_cooking in list(self.cooking_slots.heap):
+            order = self.orders.get(order_id_in_cooking)
+            if order and item_idx_in_cooking < len(order.menu_items):
+                if order.menu_items[item_idx_in_cooking].name == menu_item_name_to_check:
+                    print(f"DEBUG: Menu item '{menu_item_name_to_check}' found cooking in Order ID {order_id_in_cooking} (Item Idx {item_idx_in_cooking}).")
+                    return True
+        
+        return False
 
     def print_order(self): # Kept for compatibility with user_services, but uses new summary
         '''
@@ -324,3 +560,35 @@ class OrderManager:
         self.print_all_orders_summary()
         # The "Previous Page" part of the UI should be handled by the calling function in user_services
         # For example, after this print, user_services can print its own "Previous Page" option.
+
+    def update_order(self, order_id_to_update, new_menu_name) : # This is the old one from simulator.py
+        # This is a simplified version for the simulator's "update" command.
+        # The interactive update (modify_specific_item_in_order, add_new_item_to_order) is more comprehensive.
+        order = self.orders.get(order_id_to_update)
+        if not order:
+            print(f"    OrderManager: Update failed (simulator). Order ID {order_id_to_update} not found.")
+            return False
+        
+        new_menu_item_obj = self.menu_manager.menu_items.get(new_menu_name)
+        if not new_menu_item_obj:
+            print(f"    OrderManager: Update failed (simulator). Menu '{new_menu_name}' not found.")
+            return False
+
+        print(f"    OrderManager: Attempting basic update for Order {order_id_to_update} with '{new_menu_name}'. (Note: This is a limited simulator update)")
+        updated_item_in_sim_update = False
+        for i, item_status in enumerate(order.item_status):
+            if item_status == 'waiting': # Only change first 'waiting' item for simplicity
+                old_item_name = order.menu_items[i].name
+                order.menu_items[i] = new_menu_item_obj
+                order.item_remaining_cook_time[i] = new_menu_item_obj.cook_time
+                print(f"      Changed item {i} ('{old_item_name}') to '{new_menu_item_obj.name}' in Order {order_id_to_update} (simulator update).")
+                updated_item_in_sim_update = True
+                break 
+        
+        if updated_item_in_sim_update:
+            order.update_order_status_and_estimates(self.current_time)
+            self._ensure_order_in_waiting_queue(order_id_to_update) 
+            self.schedule_new_items_to_cook(self.current_time)
+            return True
+        print(f"    OrderManager: No 'waiting' items found to update in Order {order_id_to_update} with this basic simulator function.")
+        return False

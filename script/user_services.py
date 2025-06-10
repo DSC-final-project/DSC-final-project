@@ -391,47 +391,12 @@ class main_service_menu :
                 # 현재 Queue에 들어가있는 주문도 볼 수 있도록 추후 구현해야함
 
             elif user_input == 3 : # 주문 수정
-                first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
-                order_count = len(self.order_manager.orders)
-                # Corner Case. 주문이 없는 경우
-                if order_count == 0 : 
-                    print('주문이 존재하지 않습니다.\n')
-                    continue
-                
-                while True :
-                    # self.order_manager.print_order_with_previous_page() # Old version
-                    if self.time_stepper:
-                         self.order_manager.set_current_time(self.time_stepper.time)
-                    self.order_manager.print_all_orders_summary()
-                    print("-------------------------------------------")
-                    print(" -1 | Previous Page")
-                    print("-------------------------------------------")
-
-                    update_input = input("수정할 주문을 선택하세요: ")
-                    try :
-                        if update_input == '-1' : # 돌아가기 선택
-                            print('이전 메뉴로 돌아갑니다.\n')
-                            break
-                        
-                        order_id_to_update = int(update_input)
-                        if order_id_to_update not in self.order_manager.orders:
-                            print('잘못된 입력입니다. 다시 시도해주세요.\n')
-                            continue
-                        
-                        # 주문 수정 로직 (현재 OrderManager.update_order는 단순 경고만 출력)
-                        # 실제 수정 기능을 구현하려면 더 복잡한 인터페이스와 로직 필요
-                        print(f"Order ID {order_id_to_update} 선택됨. 메뉴 수정을 위한 상세 로직이 필요합니다.")
-                        new_menu_placeholder = input(f"Order {order_id_to_update}의 새 메뉴 이름 (현재 미구현): ")
-                        self.order_manager.update_order(order_id_to_update, new_menu_placeholder)
-                        # For now, just break after attempting an update
-                        break 
-                    except ValueError :
-                        print('잘못된 입력입니다. 다시 시도해주세요.\n')
-                        continue
                 first_run_counter = True # Reset for next menu display
+                self._handle_order_modification_interface()
+
             elif user_input == 4 : # 주문 삭제
                 first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
-
+                self._handle_order_deletion_interface()
             elif user_input == 5 :
                 # 뒤로가기
                 print('이전 메뉴로 돌아갑니다.\n')
@@ -538,6 +503,12 @@ class main_service_menu :
                         # selected_menu를 수정하면 된다. 빈칸으로 두면 원래 것을 그대로 사용
                         original_key, menu_object_to_update = selected_menu
                         
+                        # !!! 주문에서 사용 중인 메뉴인지 확인 !!!
+                        if self.order_manager.is_menu_item_active_in_orders(original_key):
+                            print(f"메뉴 '{original_key}'은(는) 현재 대기 중이거나 조리 중인 주문에 포함되어 있어 수정할 수 없습니다.\n")
+                            break # 메뉴 수정 루프 탈출
+
+
                         print(f"선택한 메뉴 '{menu_object_to_update.name}' 의 정보를 수정합니다.")
                         print(f"빈칸을 입력하면 원래 값을 유지합니다.\n")
                         while True:
@@ -623,6 +594,12 @@ class main_service_menu :
                                 continue
 
                         original_key, menu_object_to_delete = selected_menu
+                        
+                        # !!! 주문에서 사용 중인 메뉴인지 확인 !!!
+                        if self.order_manager.is_menu_item_active_in_orders(original_key):
+                            print(f"메뉴 '{original_key}'은(는) 현재 대기 중이거나 조리 중인 주문에 포함되어 있어 삭제할 수 없습니다.\n")
+                            break # 메뉴 삭제 루프 탈출
+
                         self.menu_manager.delete_menu(original_key)
                         print('정상적으로 삭제되었습니다.\n')
                         break
@@ -641,7 +618,7 @@ class main_service_menu :
         if self.time_stepper:
             print(f"Advancing time from {self.time_stepper.time}...")
             self.time_stepper.step() # TimeStepper의 step 호출
-            print(f"Time is now {self.time_stepper.time}.")
+            print(f"Time is now {self.time_stepper.time}.\n")
             # OrderManager의 상태 출력은 TimeStepper.step 내부 또는 simulate 루프에서 처리됨
             # 필요시 여기서도 self.order_manager.print_all_orders_summary() 호출 가능
         else:
@@ -653,3 +630,230 @@ class main_service_menu :
         '''
         print('프로그램을 종료합니다.')
         pass
+
+    def _get_menu_choice_for_modification(self, prompt_message="메뉴를 선택해주세요"):
+        """Helper to get a single menu item choice (object and name) from the user for modification purposes."""
+        self.menu_manager.print_menu_with_num_and_notime()
+        menu_count = len(self.menu_manager.menu_items)
+        if menu_count == 0:
+            print("현재 등록된 메뉴가 없습니다.")
+            return None, None
+
+        while True:
+            user_input_name = input(f"{prompt_message} (메뉴 번호 또는 이름 입력): ")
+            try:
+                menu_idx = int(user_input_name)
+                if 1 <= menu_idx <= menu_count:
+                    selected_menu_name = list(self.menu_manager.menu_items.keys())[menu_idx - 1]
+                    selected_menu_obj = self.menu_manager.menu_items[selected_menu_name]
+                    return selected_menu_obj, selected_menu_name
+                else:
+                    print('잘못된 메뉴 번호입니다. 다시 시도해주세요.')
+            except ValueError: # Input is a name string
+                menu_object = self.menu_manager.menu_items.get(user_input_name)
+                if menu_object:
+                    return menu_object, user_input_name
+                else:
+                    print(f"'{user_input_name}' 메뉴를 찾을 수 없습니다. 다시 시도해주세요.")
+            except IndexError: # Should be caught by menu_idx range check
+                print('잘못된 입력입니다. 다시 시도해주세요.')
+
+    def _get_quantity_input(self, prompt_message="수량을 입력해주세요"):
+        """Helper to get a positive integer quantity from user input."""
+        while True:
+            try:
+                quantity_str = input(f"{prompt_message} (숫자 입력): ")
+                quantity = int(quantity_str)
+                if quantity > 0:
+                    return quantity
+                else:
+                    print("수량은 1 이상이어야 합니다. 다시 시도해주세요.")
+            except ValueError:
+                print("잘못된 입력입니다. 숫자를 입력해주세요.")
+
+    def _handle_price_difference_payment(self, price_difference: int):
+        """Handles payment for positive price difference or informs about refund."""
+        if price_difference > 0:
+            print(f"추가 결제 금액: {price_difference:,}원")
+            current_due = price_difference
+            while current_due > 0:
+                try:
+                    payment_str = input(f"결제할 금액을 입력해주세요 (남은 금액: {current_due:,}원): ")
+                    payment = int(payment_str)
+                    if payment <= 0:
+                        print("결제 금액은 0보다 커야 합니다.")
+                        continue
+                    current_due -= payment
+                    if current_due <= 0:
+                        if current_due < 0: print(f"거스름돈: {-current_due:,}원")
+                        print("추가 결제가 완료되었습니다.\n")
+                        return True
+                    else:
+                        print(f"남은 추가 결제 금액: {current_due:,}원")
+                except ValueError:
+                    print("잘못된 입력입니다. 숫자를 입력해주세요.")
+        elif price_difference < 0: # 음수일 경우 환불
+            # print(f"환불될 금액: {-price_difference:,}원\n")
+            print(f"차액 {-price_difference:,}원이 환불되었습니다.\n")
+        # No message for price_difference == 0, OrderManager might have printed info.
+        return True
+
+    def _display_order_items_for_modification(self, order_id):
+        order_obj = self.order_manager.orders.get(order_id)
+        if not order_obj: return False
+
+        current_sim_time = self.time_stepper.time if self.time_stepper else self.order_manager.current_time
+        order_obj.update_order_status_and_estimates(current_sim_time) # Refresh status
+        
+        item_details = order_obj.get_item_details_for_modification_display()
+        
+        headers = ["#", "메뉴 이름", "현재 상태"]
+        table_data = [["1", "새 메뉴 추가", "-"]] 
+        for idx, (name, status, _original_idx, _price) in enumerate(item_details):
+            table_data.append([str(idx + 2), name, status]) # Display index starts from 2
+
+        table_str = tabulate(table_data, headers=headers, tablefmt="grid")
+        print(f"\n--- 주문 ID: {order_id} 수정 --- (주문 시간: {order_obj.order_time}, 현재 상태: {order_obj.status})")
+        print(table_str)
+        table_width = 0
+        if table_str: # 테이블 문자열이 생성되었는지 확인
+            lines = table_str.splitlines()
+            if lines: # 문자열에 라인이 있는지 확인
+                table_width = len(lines[0])
+        
+        print("-" * table_width if table_width > 0 else "------------------------------------") # 테이블 너비에 맞춰 구분선 출력
+        return True
+
+    def _modify_single_order_items_loop(self, order_id):
+        while True:
+            if not self._display_order_items_for_modification(order_id): return
+
+            order_obj = self.order_manager.orders.get(order_id)
+            if not order_obj or not order_obj.menu_items : # If order became empty or was deleted
+                print(f"주문 ID {order_id}에 더 이상 수정할 항목이 없거나 주문이 완료/삭제되었습니다.")
+                break
+
+            choice_str = input("수정할 항목 번호 선택 (1: 새 메뉴 추가, -1: 이 주문 수정 완료): ")
+            try:
+                choice = int(choice_str)
+                if choice == -1: break
+
+                current_sim_time = self.time_stepper.time if self.time_stepper else self.order_manager.current_time
+                self.order_manager.set_current_time(current_sim_time)
+
+                if choice == 1: # Add new menu
+                    print("\n--- 새 메뉴 추가 ---")
+                    menu_to_add_obj, menu_name = self._get_menu_choice_for_modification("추가할 메뉴 선택")
+                    if menu_to_add_obj:
+                        quantity = self._get_quantity_input(f"'{menu_name}'의 수량 입력")
+                        payment_list = [{menu_to_add_obj: quantity}]
+                        print("\n--- 추가 메뉴 결제 ---")
+                        if self.order_payment(payment_list):
+                            self.order_manager.add_new_item_to_order(order_id, menu_to_add_obj, quantity)
+                        else: print("결제 실패/취소로 메뉴를 추가하지 않았습니다.")
+                elif choice > 1:
+                    actual_item_idx = choice - 2 # Map display# to 0-based Order.menu_items index
+                    item_details_list = order_obj.get_item_details_for_modification_display()
+
+                    if not (0 <= actual_item_idx < len(item_details_list)):
+                        print("잘못된 항목 번호입니다."); continue
+                    
+                    selected_item_name, selected_item_status, _, _ = item_details_list[actual_item_idx]
+
+                    if selected_item_status == 'completed':
+                        print(f"'{selected_item_name}' 항목은 이미 'completed' 상태이므로 수정할 수 없습니다."); continue
+
+                    print(f"\n--- 선택된 항목 '{selected_item_name}' ({selected_item_status}) 수정 ---")
+                    print("  1 | 다른 메뉴로 변경"); print("  2 | 이 항목 삭제"); print(" -1 | 작업 취소")
+                    sub_choice_str = input("작업 선택 (번호 입력): ")
+                    sub_choice = int(sub_choice_str)
+
+                    if sub_choice == 1: # Change menu
+                        new_menu_obj, new_menu_name = self._get_menu_choice_for_modification("변경할 새 메뉴 선택")
+                        if new_menu_obj:
+                            success, price_diff = self.order_manager.modify_specific_item_in_order(
+                                order_id, actual_item_idx, new_menu_item_obj=new_menu_obj)
+                            if success: self._handle_price_difference_payment(price_diff)
+                    elif sub_choice == 2: # Delete item
+                        if input(f"'{selected_item_name}' 항목을 정말 삭제하시겠습니까? (y/n): ").lower() == 'y':
+                            success, price_diff = self.order_manager.modify_specific_item_in_order(
+                                order_id, actual_item_idx, delete_item_flag=True)
+                            if success: self._handle_price_difference_payment(price_diff) # Handles refund
+                        else: print("삭제가 취소되었습니다.")
+                    elif sub_choice != -1: print("잘못된 작업 선택입니다.")
+                else: print("잘못된 항목 번호입니다.")
+            except ValueError: print("잘못된 입력입니다. 숫자를 입력해주세요.")
+            
+            if order_id not in self.order_manager.orders: # Check if order was deleted during modification
+                print(f"주문 ID {order_id}가 더 이상 존재하지 않습니다. 수정 메뉴를 종료합니다."); break
+        print(f"주문 ID {order_id} 수정을 마쳤습니다.\n")
+
+    def _handle_order_modification_interface(self):
+        if not self.order_manager.orders: print("수정할 주문이 없습니다.\n"); return
+
+        while True:
+            print("\n---------- 주문 수정: 전체 주문 목록 ----------")
+            current_sim_time = self.time_stepper.time if self.time_stepper else self.order_manager.current_time
+            self.order_manager.set_current_time(current_sim_time)
+            self.order_manager.print_all_orders_summary()
+            print("-------------------------------------------")
+            order_id_input = input("수정할 주문 ID를 입력하세요 (뒤로가기: -1): ")
+            if order_id_input == '-1': print("주문 수정 메뉴를 종료합니다.\n"); return
+            try:
+                order_id_to_update = int(order_id_input)
+                if order_id_to_update not in self.order_manager.orders:
+                    print("존재하지 않는 주문 ID입니다. 다시 입력해주세요."); continue
+
+                order_obj = self.order_manager.orders[order_id_to_update]
+                order_obj.update_order_status_and_estimates(current_sim_time) # 상태 최신화
+                if order_obj.status in ['completed', 'ready']:
+                    print(f"주문 ID {order_id_to_update}는 이미 '{order_obj.status}' 상태이므로 수정할 수 없습니다.")
+                    continue
+
+                self._modify_single_order_items_loop(order_id_to_update)
+            except ValueError: print("잘못된 입력입니다. 주문 ID(숫자) 또는 '-1'을 입력해주세요.")
+
+    def _handle_order_deletion_interface(self):
+        if not self.order_manager.orders:
+            print("삭제할 주문이 없습니다.\n")
+            return
+
+        while True:
+            print("\n---------- 주문 삭제: 전체 주문 목록 ----------")
+            current_sim_time = self.time_stepper.time if self.time_stepper else self.order_manager.current_time
+            self.order_manager.set_current_time(current_sim_time)
+            self.order_manager.print_all_orders_summary()
+            print("-------------------------------------------")
+            
+            order_id_input = input("삭제할 주문 ID를 입력하세요 (뒤로가기: -1): ")
+            if order_id_input == '-1':
+                print("주문 삭제 메뉴를 종료합니다.\n")
+                return
+            
+            try:
+                order_id_to_delete = int(order_id_input)
+                if order_id_to_delete not in self.order_manager.orders:
+                    print("존재하지 않는 주문 ID입니다. 다시 입력해주세요.")
+                    continue
+
+                order_obj = self.order_manager.orders[order_id_to_delete]
+                order_obj.update_order_status_and_estimates(current_sim_time) # 상태 최신화
+                if order_obj.status in ['completed', 'ready']:
+                    print(f"주문 ID {order_id_to_delete}는 이미 '{order_obj.status}' 상태이므로 삭제할 수 없습니다.")
+                    continue
+                
+                confirm = input(f"주문 ID {order_id_to_delete}를 정말 삭제하시겠습니까? (y/n): ").lower()
+                if confirm == 'y':
+                    success, refund_amount = self.order_manager.delete_order(order_id_to_delete)
+                    if success:
+                        print(f"주문 ID {order_id_to_delete}가 성공적으로 삭제되었습니다.")
+                        if refund_amount > 0:
+                            print(f"총 {refund_amount:,}원이 환불되었습니다.\n")
+                        else:
+                            print("환불될 금액이 없습니다.\n") # Should not happen if not completed/ready
+                    # else: OrderManager.delete_order already prints messages for failure
+                else:
+                    print("주문 삭제가 취소되었습니다.")
+
+            except ValueError:
+                print("잘못된 입력입니다. 주문 ID(숫자) 또는 '-1'을 입력해주세요.")

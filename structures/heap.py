@@ -25,5 +25,8 @@ class PriorityQueue:
     def __len__(self):
         return len(self.heap)
 
+    def is_empty(self):
+        return len(self.heap) == 0
+
     def reorder(self): # This might be needed if priorities change externally
         heapq.heapify(self.heap)
