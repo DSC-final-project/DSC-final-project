@@ -11,11 +11,14 @@ sys.path.append(main_dir)
 from tabulate import tabulate
 from core.menu import MenuManager
 from core.order import OrderManager
+# Assuming TimeStepper might be used here for interactive simulation
+from simulator import TimeStepper # Add this import
 
 class main_service_menu :
-    def __init__(self, MenuManager, OrderManager):
+    def __init__(self, MenuManager, OrderManager, TimeStepper_instance=None): # Added TimeStepper
         self.menu_manager = MenuManager
         self.order_manager = OrderManager
+        self.time_stepper = TimeStepper_instance # Store TimeStepper
         pass
 
     def user_input_process(self, input_count, operator_mode_flag=False):
@@ -201,9 +204,14 @@ class main_service_menu :
                 print()
                 # 주문을 더 이상 안할 시
                 # 결제 하고
-                self.order_payment(order_menu_list)
-                # 결제 완료되면 order 추가
-                self.order_manager.create_order(order_menu_list)
+                payment_successful = self.order_payment(order_menu_list)
+                if payment_successful:
+                    # 결제 완료되면 order 추가
+                    current_sim_time = 0 # Default time if no stepper
+                    if self.time_stepper:
+                        current_sim_time = self.time_stepper.time
+                    self.order_manager.create_order(order_menu_list, current_sim_time)
+                    print("주문이 성공적으로 접수되었습니다.")
                 break
             else :
                 print()
@@ -272,9 +280,11 @@ class main_service_menu :
                 print('게산이 완료되었습니다.')
                 print(f'거스름돈: {int(user_pay_input) - total_price:,} 원\n')
                 total_price = 0
+                return True # Payment successful
             elif int(user_pay_input) == total_price :
                 print('게산이 완료되었습니다.\n')
                 total_price = 0
+                return True # Payment successful
             else :
                 print('금액이 부족합니다. 추가로 결제해주세요.')
                 total_price -= int(user_pay_input)
@@ -282,7 +292,7 @@ class main_service_menu :
             
             if total_price == 0 :
                 break
-
+        return False # Should not be reached if payment completes
     def user_order_check(self) :
         '''
         사용자가 order를 확인할 수 있도록 해줌
@@ -290,6 +300,23 @@ class main_service_menu :
         만약 주문의 메뉴 중 제작중이 아닌 메뉴가 있다면 예상 완료 시간은 표시 x
         주문의 메뉴가 전부 제작중이라면 가장 오래 남은 시간을 기준으로 주문 완성 시간 표시
         '''
+        if not self.order_manager.orders:
+            print("확인할 주문이 없습니다.\n")
+            return
+
+        while True:
+            order_id_input = input("확인할 주문 ID를 입력하세요 (전체 주문 현황은 'all', 뒤로가기는 '-1'): ")
+            if order_id_input.lower() == 'all':
+                self.order_manager.print_all_orders_summary()
+            elif order_id_input == '-1':
+                break
+            else:
+                try:
+                    order_id = int(order_id_input)
+                    print(self.order_manager.get_order_status_details(order_id))
+                except ValueError:
+                    print("잘못된 입력입니다. 주문 ID(숫자), 'all' 또는 '-1'을 입력해주세요.")
+            print("-" * 20)
 #######################
 ### Operator System ###
 #######################
@@ -355,7 +382,11 @@ class main_service_menu :
 
             elif user_input == 2 :
                 first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
-                self.order_manager.print_order() # 우선은 모든 주문에 대한 정보 출력
+                # self.order_manager.print_order() # Old version
+                if self.time_stepper: # If time stepper exists, update time before printing
+                    self.order_manager.set_current_time(self.time_stepper.time)
+                self.order_manager.print_all_orders_summary()
+
                 continue
                 # 현재 Queue에 들어가있는 주문도 볼 수 있도록 추후 구현해야함
 
@@ -368,24 +399,36 @@ class main_service_menu :
                     continue
                 
                 while True :
-                    self.order_manager.print_order_with_previous_page() # 주문이 존재하면, 일단 주문 목록 출력
+                    # self.order_manager.print_order_with_previous_page() # Old version
+                    if self.time_stepper:
+                         self.order_manager.set_current_time(self.time_stepper.time)
+                    self.order_manager.print_all_orders_summary()
+                    print("-------------------------------------------")
+                    print(" -1 | Previous Page")
+                    print("-------------------------------------------")
+
                     update_input = input("수정할 주문을 선택하세요: ")
                     try :
-                        int(update_input)
                         if update_input == '-1' : # 돌아가기 선택
                             print('이전 메뉴로 돌아갑니다.\n')
                             break
-                        elif update_input <= '0' or int(update_input) > order_count : # 잘못된 범위
+                        
+                        order_id_to_update = int(update_input)
+                        if order_id_to_update not in self.order_manager.orders:
                             print('잘못된 입력입니다. 다시 시도해주세요.\n')
                             continue
-                        else :
-                            selected_order = self.order_manager.orders[int(update_input)-1]
-                            self.order_manager.update_order(selected_order)
+                        
+                        # 주문 수정 로직 (현재 OrderManager.update_order는 단순 경고만 출력)
+                        # 실제 수정 기능을 구현하려면 더 복잡한 인터페이스와 로직 필요
+                        print(f"Order ID {order_id_to_update} 선택됨. 메뉴 수정을 위한 상세 로직이 필요합니다.")
+                        new_menu_placeholder = input(f"Order {order_id_to_update}의 새 메뉴 이름 (현재 미구현): ")
+                        self.order_manager.update_order(order_id_to_update, new_menu_placeholder)
+                        # For now, just break after attempting an update
+                        break 
                     except ValueError :
                         print('잘못된 입력입니다. 다시 시도해주세요.\n')
                         continue
-                
-
+                first_run_counter = True # Reset for next menu display
             elif user_input == 4 : # 주문 삭제
                 first_run_counter = True # 메뉴가 정상적으로 선택되면 위 메뉴가 출력되도록 만들기
 
@@ -594,7 +637,15 @@ class main_service_menu :
         # Loop문 탈출하면 자동으로 돌아감
     
     def tick_system(self) :
-        pass
+        """시뮬레이션 시간을 1 tick 진행시킵니다."""
+        if self.time_stepper:
+            print(f"Advancing time from {self.time_stepper.time}...")
+            self.time_stepper.step() # TimeStepper의 step 호출
+            print(f"Time is now {self.time_stepper.time}.")
+            # OrderManager의 상태 출력은 TimeStepper.step 내부 또는 simulate 루프에서 처리됨
+            # 필요시 여기서도 self.order_manager.print_all_orders_summary() 호출 가능
+        else:
+            print("TimeStepper not available for interactive tick.")
 
     def end_system(self) :
         '''
