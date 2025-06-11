@@ -178,7 +178,7 @@ class MenuManager:
         bottom_middle_border = f"|{'-'*(table_width-2)}|"
         bottom_border = "-" * table_width
         cell1_content = " -1  "
-        cell2_content = " Prevous Page"
+        cell2_content = " Previous Page"
         fixed_part_length = len("|") + len(cell1_content) + len("|") + len("|")
         cell2_width = table_width - fixed_part_length
         footer_text = f"|{cell1_content}|{cell2_content:<{cell2_width}}|"
