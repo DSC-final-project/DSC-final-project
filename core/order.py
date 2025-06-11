@@ -2,6 +2,7 @@ from structures.heap import PriorityQueue
 from structures.queue import Queue
 from tabulate import tabulate
 import heapq # For OrderManager.delete_order
+from collections import Counter
 
 class Order:
     def __init__(self, order_id: int, order_time: int):
@@ -32,7 +33,7 @@ class Order:
 
     def update_order_status_and_estimates(self, current_time):
         """OrderManager가 tick마다 호출하여 주문의 전체 상태와 예상 완료 시간을 업데이트합니다."""
-        if not self.menu_items:
+        if not self.menu_items: #?
             self.status = 'completed'
             self.estimated_completion_time = self.order_time
             self.actual_completion_time = self.order_time
@@ -129,36 +130,94 @@ class OrderManager:
         return current_order_id
     
 
-    def update_order(self, order_id_to_update, new_menu_name) : 
+    def diff_orders(self, org_order_dic, new_order_dic):
+        '''
+        Return : [[변경1], [변경2], ...]
+        메뉴 변경이면 - [0, 이전메뉴, 이후메뉴]
+        메뉴 수량 감소이면 - [1, 대상메뉴, 변경수량(-n)]
+        '''
+
+        removed = {}
+        added   = {}
+        for name in set(org_order_dic) | set(new_order_dic):
+            if name not in self.menu_manager.menu_items:
+                print(f"[주문변경] X {name}는 없는 메뉴입니다")
+                continue
+            old = org_order_dic.get(name, 0)
+            new = new_order_dic.get(name, 0)
+            if new < old:
+                removed[name] = old - new
+            elif new > old:
+                added[name] = new - old
+        
+        changes = []
+        for rem_name, rem_qty in list(removed.items()):
+            if rem_qty <= 0:
+                continue
+            for add_name, add_qty in list(added.items()):
+                if add_qty <= 0:
+                    continue
+                qty = min(rem_qty, add_qty)
+                changes.append([0, rem_name, add_name])
+                removed[rem_name] -= qty
+                added[add_name]   -= qty
+                rem_qty = removed[rem_name]
+                if rem_qty == 0:
+                    break
+        
+        for name, qty in removed.items():
+            if qty > 0:
+                changes.append([1, name, -qty])
+        for name, qty in added.items():
+            if qty > 0:
+                print(f"[주문변경] X 메뉴를 추가하시려면 새 주문을 접수하여 주시기 바랍니다")
+        
+        return changes
+    
+
+    def update_order(self, order_id_to_update, new_order) : 
 
         order = self.orders.get(order_id_to_update)
         if not order:
-            print(f"    OrderManager: Update failed (simulator). Order ID {order_id_to_update} not found.")
-            return False
-        
-        new_menu_item_obj = self.menu_manager.menu_items.get(new_menu_name)
-        if not new_menu_item_obj:
-            print(f"    OrderManager: Update failed (simulator). Menu '{new_menu_name}' not found.")
-            return False
+            return "접수되지 않은 주문입니다"
 
-        print(f"    OrderManager: Attempting basic update for Order {order_id_to_update} with '{new_menu_name}'. (Note: This is a limited simulator update)")
-        updated_item_in_sim_update = False
-        for i, item_status in enumerate(order.item_status):
-            if item_status == 'waiting': # Only change first 'waiting' item for simplicity
-                old_item_name = order.menu_items[i].name
-                order.menu_items[i] = new_menu_item_obj
-                order.item_remaining_cook_time[i] = new_menu_item_obj.cook_time
-                print(f"      Changed item {i} ('{old_item_name}') to '{new_menu_item_obj.name}' in Order {order_id_to_update} (simulator update).")
-                updated_item_in_sim_update = True
-                break 
+        if order.status =='ready':
+            return "이미 제조완료된 주문입니다"
         
-        if updated_item_in_sim_update:
-            order.update_order_status_and_estimates(self.current_time)
-            self._ensure_order_in_waiting_queue(order_id_to_update) 
-            self.schedule_new_items_to_cook(self.current_time)
-            return True
-        print(f"    OrderManager: No 'waiting' items found to update in Order {order_id_to_update} with this basic simulator function.")
-        return False
+        if order.status == 'pending': # 아직 아무것도 시작하기 전이므로 그냥 입력받은걸로 대체
+            self.orders[order_id_to_update] = new_order
+        else: # in_progress or completed
+            org_order_dic = Counter(order.menu_items)
+            new_order_dic = {name: qty for name, qty in new_order}
+            changes = self.diff_orders(org_order_dic, new_order_dic)
+            
+            for change in changes:
+                if change[0] == 0:
+                    old_menu = change[1]
+                    new_menu = change[2]
+                    for idx, menu in enumerate(order.menu_items):
+                        if menu == old_menu & order.item_status[idx] == 'waiting':
+                            order.menu_items[idx] = new_menu
+                            order.item_remaining_cook_time[idx] = self.menu_manager.menu_items[new_menu].cook_time
+                            break
+                elif change[0] == 1:
+                    target_menu = change[1]
+                    n = change[2]
+                    count = 0
+                    for idx, menu in enumerate(order.menu_items):
+                        if menu == target_menu & order.item_status[idx] == 'waiting':
+                            del order.menu_items[idx] 
+                            del order.item_status[idx] 
+                            del order.item_cook_start_time[idx]
+                            del order.item_remaining_cook_time[idx] 
+                            count += 1
+                            if count == n:
+                                break
+                else:
+                    print("Error: 정의되지 않은 update")
+        order.update_order_status_and_estimates(self.current_time)
+
+        return order
     
 
     def delete_order(self, order_id_to_delete: int) -> tuple[bool, int]:
@@ -191,7 +250,34 @@ class OrderManager:
         del self.orders[order_id_to_delete]
         return refund_amount
 
+    def get_order_status_details(self, order_id: int) -> str:
+        if order_id not in self.orders:
+            return f"Order ID {order_id} not found."
+        
+        order = self.orders[order_id]
+        order.update_order_status_and_estimates(self.current_time) 
 
+        details = [
+            f"Order ID: {order.order_id}",
+            f"  Status: {order.status}",
+            f"  Order Time: {order.order_time}",
+            f"  Est. Completion: {order.estimated_completion_time if order.estimated_completion_time is not None else 'N/A'}",
+            f"  Actual Completion: {order.actual_completion_time if order.actual_completion_time is not None else 'N/A'}",
+            "  Items:"
+        ]
+        for i, menu_item in enumerate(order.menu_items):
+            item_detail = f"    - {menu_item.name}: {order.item_status[i]}"
+            if order.item_status[i] == 'cooking':
+                start = order.item_cook_start_time[i]
+                finish = start + menu_item.cook_time
+                item_detail += f" (Started: {start}, Finishes: {finish}, Remaining: {finish - self.current_time})"
+            elif order.item_status[i] == 'completed':
+                start = order.item_cook_start_time[i]
+                finish = start + menu_item.cook_time
+                item_detail += f" (Cooked: {start}-{finish})"
+            details.append(item_detail)
+        return "\n".join(details)
+    
     def print_all_orders_summary(self):
 
         print(f"\n--- Orders Summary at Time {self.current_time} ---")
@@ -248,13 +334,15 @@ class OrderManager:
         # For example, after this print, user_services can print its own "Previous Page" option.
 
 
+
+
     def handle_cooking_completions(self, current_time: int):
-        """조리 중인 아이템들의 완료 여부를 확인하고 상태를 업데이트합니다."""
-        print(f"  OrderManager: Checking cooking completions at time {current_time}.")
-        # completed_items_info = [] # (order_id, item_idx) # Not strictly needed if just updating
+        """
+        Heap에서 조리 완료된 아이템들 확인
+        """
         
-        temp_cooking_items = []
         while not self.cooking_slots.is_empty():
+            self.cooking_slots.reorder()
             finish_time, order_id, item_idx = self.cooking_slots.peek()
             order = self.orders[order_id]
 
@@ -262,19 +350,19 @@ class OrderManager:
                 self.cooking_slots.pop() 
                 order.item_status[item_idx] = 'completed'
                 order.item_remaining_cook_time[item_idx] = 0
-                print(f"    Item '{order.menu_items[item_idx].name}' (Order {order_id}, ItemIdx {item_idx}) COMPLETED.")
+                # print(f"    Item '{order.menu_items[item_idx].name}' (Order {order_id}, ItemIdx {item_idx}) COMPLETED.")
 
                 if all(s == 'completed' for s in order.item_status):
                     order.status = 'ready'
                     order.actual_completion_time = current_time 
-                    print(f"    >>> Order {order_id} is READY! <<<")
+                    order_dic = Counter(order.menu_items)
+                    items = ", ".join(f"{name}{qty}" for name, qty in order_dic.items())
+                    print(f"[제조완료] 주문번호 {order_id} - {items} ")
+                    # print(f"    >>> Order {order_id} is READY! <<<")
             else:
-                temp_cooking_items.append((finish_time, order_id, item_idx)) 
-                self.cooking_slots.pop() 
-        
-        for item_tuple in temp_cooking_items:
-            self.cooking_slots.push(item_tuple)
+                break 
             
+
     def schedule_new_items_to_cook(self, current_time: int):
         """대기 중인 주문들의 아이템을 빈 조리 슬롯에 할당합니다."""
         print(f"  OrderManager: Scheduling new items at time {current_time}.")
@@ -340,34 +428,9 @@ class OrderManager:
             if order.status not in ['ready', 'completed']: 
                 order.update_order_status_and_estimates(current_time)
 
-    def get_order_status_details(self, order_id: int) -> str:
-        if order_id not in self.orders:
-            return f"Order ID {order_id} not found."
-        
-        order = self.orders[order_id]
-        order.update_order_status_and_estimates(self.current_time) 
 
-        details = [
-            f"Order ID: {order.order_id}",
-            f"  Status: {order.status}",
-            f"  Order Time: {order.order_time}",
-            f"  Est. Completion: {order.estimated_completion_time if order.estimated_completion_time is not None else 'N/A'}",
-            f"  Actual Completion: {order.actual_completion_time if order.actual_completion_time is not None else 'N/A'}",
-            "  Items:"
-        ]
-        for i, menu_item in enumerate(order.menu_items):
-            item_detail = f"    - {menu_item.name}: {order.item_status[i]}"
-            if order.item_status[i] == 'cooking':
-                start = order.item_cook_start_time[i]
-                finish = start + menu_item.cook_time
-                item_detail += f" (Started: {start}, Finishes: {finish}, Remaining: {finish - self.current_time})"
-            elif order.item_status[i] == 'completed':
-                start = order.item_cook_start_time[i]
-                finish = start + menu_item.cook_time
-                item_detail += f" (Cooked: {start}-{finish})"
-            details.append(item_detail)
-        return "\n".join(details)
 
+    ############# for user_services.py ##############
 
     def _remove_item_from_cooking_slot_by_order_item_idx(self, order_id: int, item_idx_in_order: int):
         """

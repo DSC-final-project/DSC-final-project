@@ -1,6 +1,7 @@
 import json
 import time
 import os
+from collections import Counter
 
 from core.menu import MenuManager
 from core.order import OrderManager
@@ -14,16 +15,11 @@ class TimeStepper:
         """시뮬레이션 시간을 한 단위 증가시키고, OrderManager가 해당 시간의 작업을 처리하도록 합니다."""
         current_processing_time = self.time # 현재 시간의 작업을 처리
 
-        print(f"--- TimeStepper: Processing for time {current_processing_time} ---")
-        # OrderManager에 현재 시간 알림
-        self.order_manager.set_current_time(current_processing_time)
-
         # OrderManager의 시간 의존적 로직들을 순차적으로 호출
         self.order_manager.handle_cooking_completions(current_processing_time)
         self.order_manager.schedule_new_items_to_cook(current_processing_time)
         self.order_manager.update_all_order_details(current_processing_time)
 
-        # 그 다음 시간을 증가시켜 다음 step을 준비
         self.time += 1
         # print(f"--- TimeStepper: Time advanced to {self.time} ---") # 상세 로그 필요시 주석 해제
 
@@ -50,6 +46,8 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
 
     for _ in range(simulation_duration): # 루프 변수 t는 직접 사용하지 않고 sim.time을 기준으로 함
         current_sim_time = sim.time 
+        order_mgr.set_current_time(current_sim_time)
+
         print("\n"*5)
         print(f"======= Processing Time Step: {current_sim_time} =======")
 
@@ -76,7 +74,7 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
                     if order_id_to_delete is not None:
                         del_out = order_mgr.delete_order(order_id_to_delete)
                         if isinstance(del_out, str):
-                            print(f"[취소실패] X 주문번호 {order_id_to_delete} {del_out}")
+                            print(f"[취소실패] X 주문번호 {order_id_to_delete}  {del_out}")
                         else:
                             print(f"[취소완료] 주문번호 {order_id} - 환불 금액: {del_out}원")
                     else:
@@ -84,23 +82,20 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
 
                 elif action == "update":
                     order_id_to_update = cmd.get("order_id")
-                    update_out = order_mgr.update_order(order_id_to_update)
-                    if isinstance(update_out):
-                        print(f"[변경실패] X 주문번호 {order_id_to_update} {update_out}")
+                    new_order = cmd.get("order")
+                    update_out = order_mgr.update_order(order_id_to_update, new_order)
+                    if isinstance(update_out, str):
+                        print(f"[주문변경] X 주문번호 {order_id_to_update}  {update_out}")
                     else:
-
-                        print(f"[변경완료] 주문번호 {order_id_to_update} ")
-
-
-                    new_menu_name = cmd.get("menu") # Assuming this is a string name
-                    print(f"    Simulator: Update action for order_id {order_id_to_update} to '{new_menu_name}' - (Note: update logic is complex and may be limited).")
-                    if order_id_to_update is not None:
-                         order_mgr.update_order(order_id_to_update, new_menu_name) 
+                        order_dic = Counter(update_out.menu_items)
+                        items = ", ".join(f"{name}{qty}" for name, qty in order_dic.items()) #order
+                        print(f"[주문변경] 주문번호 {order_id_to_update} - {items}")
                          
                 elif action == "print": # 주문번호의 진행상황 출력 
                     order_id_to_print = cmd.get("order_id")
-                    print(f"    Simulator: Printing details for Order ID {order_id_to_print}")
+                    print(f"--- 주문번호 {order_id_to_print} 제조현황 ---")
                     print(order_mgr.get_order_status_details(order_id_to_print))
+                    print("-"*20)
 
                 else:
                     print("Error: No such action")
