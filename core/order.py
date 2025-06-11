@@ -141,7 +141,7 @@ class OrderManager:
         added   = {}
         for name in set(org_order_dic) | set(new_order_dic):
             if name not in self.menu_manager.menu_items:
-                print(f"[주문변경] X {name}는 없는 메뉴입니다")
+                print(f"[변경실패] {name}는 없는 메뉴입니다")
                 continue
             old = org_order_dic.get(name, 0)
             new = new_order_dic.get(name, 0)
@@ -170,7 +170,7 @@ class OrderManager:
                 changes.append([1, name, -qty])
         for name, qty in added.items():
             if qty > 0:
-                print(f"[주문변경] X 메뉴를 추가하시려면 새 주문을 접수하여 주시기 바랍니다")
+                print(f"[변경실패] 메뉴를 추가하시려면 새 주문을 접수하여 주시기 바랍니다")
         
         return changes
     
@@ -187,7 +187,7 @@ class OrderManager:
         if order.status == 'pending': # 아직 아무것도 시작하기 전이므로 그냥 입력받은걸로 대체
             self.orders[order_id_to_update] = new_order
         else: # in_progress or completed
-            org_order_dic = Counter(order.menu_items)
+            org_order_dic = Counter(item.name for item in order.menu_items)
             new_order_dic = {name: qty for name, qty in new_order}
             changes = self.diff_orders(org_order_dic, new_order_dic)
             
@@ -196,7 +196,7 @@ class OrderManager:
                     old_menu = change[1]
                     new_menu = change[2]
                     for idx, menu in enumerate(order.menu_items):
-                        if menu == old_menu & order.item_status[idx] == 'waiting':
+                        if (menu == old_menu) & (order.item_status[idx] == 'waiting'):
                             order.menu_items[idx] = new_menu
                             order.item_remaining_cook_time[idx] = self.menu_manager.menu_items[new_menu].cook_time
                             break
@@ -205,7 +205,7 @@ class OrderManager:
                     n = change[2]
                     count = 0
                     for idx, menu in enumerate(order.menu_items):
-                        if menu == target_menu & order.item_status[idx] == 'waiting':
+                        if (menu == target_menu) & (order.item_status[idx] == 'waiting'):
                             del order.menu_items[idx] 
                             del order.item_status[idx] 
                             del order.item_cook_start_time[idx]
@@ -280,7 +280,7 @@ class OrderManager:
     
     def print_all_orders_summary(self):
 
-        print(f"\n--- Orders Summary at Time {self.current_time} ---")
+        print(f"\n  Orders ")
         if not self.orders:
             print("No orders in the system.")
             return
@@ -305,8 +305,8 @@ class OrderManager:
                 order.order_id,
                 order.status,
                 order.order_time,
-                order.estimated_completion_time if order.estimated_completion_time is not None and order.estimated_completion_time != float('inf') else "N/A",
-                order.actual_completion_time if order.actual_completion_time is not None else "N/A",
+                order.estimated_completion_time if order.estimated_completion_time is not None and order.estimated_completion_time != float('inf') else "",
+                order.actual_completion_time if order.actual_completion_time is not None else "",
                 "\n".join(items_display_list) # 각 아이템 정보를 개행으로 연결
             ])
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
@@ -355,9 +355,7 @@ class OrderManager:
                 if all(s == 'completed' for s in order.item_status):
                     order.status = 'ready'
                     order.actual_completion_time = current_time 
-                    order_dic = Counter(order.menu_items)
-                    items = ", ".join(f"{name}{qty}" for name, qty in order_dic.items())
-                    print(f"[제조완료] 주문번호 {order_id} - {items} ")
+                    print(f"[제조완료] 주문번호 {order_id} 제조가 모두 완료되었습니다")
                     # print(f"    >>> Order {order_id} is READY! <<<")
             else:
                 break 

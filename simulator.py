@@ -24,7 +24,7 @@ class TimeStepper:
         # print(f"--- TimeStepper: Time advanced to {self.time} ---") # 상세 로그 필요시 주석 해제
 
 
-def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=1):
+def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=2):
     """
     지정된 command 파일에 따라 시뮬레이션을 실행합니다.
     MenuManager, OrderManager, TimeStepper 인스턴스는 외부에서 생성되어 주입됩니다.
@@ -39,14 +39,16 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
     
     simulation_duration = max(max_command_time + 20, 30) 
 
-    print(f"--- Simulation Start (File: {file_path}) ---")
-    print(f"Total simulation duration: {simulation_duration} ticks")
+    print(f"\n\n------------- Simulation Start --------------")
+    print(f"Total simulation duration: {simulation_duration} ticks\n")
     # 초기 상태에서 OrderManager의 current_time을 TimeStepper의 초기 시간과 동기화
     order_mgr.set_current_time(sim.time)
+    menu_mgr.print_menu()
 
     for _ in range(simulation_duration): # 루프 변수 t는 직접 사용하지 않고 sim.time을 기준으로 함
         current_sim_time = sim.time 
         order_mgr.set_current_time(current_sim_time)
+        time.sleep(delay)
 
         print("\n"*5)
         print(f"======= Processing Time Step: {current_sim_time} =======")
@@ -74,7 +76,7 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
                     if order_id_to_delete is not None:
                         del_out = order_mgr.delete_order(order_id_to_delete)
                         if isinstance(del_out, str):
-                            print(f"[취소실패] X 주문번호 {order_id_to_delete}  {del_out}")
+                            print(f"[취소실패] 주문번호 {order_id_to_delete}  {del_out}")
                         else:
                             print(f"[취소완료] 주문번호 {order_id} - 환불 금액: {del_out}원")
                     else:
@@ -85,25 +87,23 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
                     new_order = cmd.get("order")
                     update_out = order_mgr.update_order(order_id_to_update, new_order)
                     if isinstance(update_out, str):
-                        print(f"[주문변경] X 주문번호 {order_id_to_update}  {update_out}")
+                        print(f"[변경실패] 주문번호 {order_id_to_update}  {update_out}")
                     else:
-                        order_dic = Counter(update_out.menu_items)
+                        order_dic = Counter(item.name for item in update_out.menu_items)
                         items = ", ".join(f"{name}{qty}" for name, qty in order_dic.items()) #order
                         print(f"[주문변경] 주문번호 {order_id_to_update} - {items}")
                          
                 elif action == "print": # 주문번호의 진행상황 출력 
                     order_id_to_print = cmd.get("order_id")
-                    print(f"--- 주문번호 {order_id_to_print} 제조현황 ---")
+                    print(f"\n--- 주문번호 {order_id_to_print} 제조현황 ---\n")
                     print(order_mgr.get_order_status_details(order_id_to_print))
-                    print("-"*20)
+                    print("-"*30)
 
                 else:
                     print("Error: No such action")
         
         sim.step() 
-
         order_mgr.print_all_orders_summary()
-        time.sleep(delay)
 
         if current_sim_time >= max_command_time + 10: 
             if not order_mgr.orders:
@@ -113,7 +113,7 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
                     print(f"\nAll orders completed and queues are empty at time {current_sim_time}. Ending simulation early.")
                     break
     
-    print(f"\n--- Simulation End (after {sim.time} ticks) ---")
+    print(f"\n----------- Simulation End (time: {sim.time}) --------------\n\n")
 
 
 
@@ -131,8 +131,6 @@ if __name__ == "__main__":
         menu_manager.create_menu("카푸치노", "5", "4000")
         menu_manager.create_menu("에스프레소", "2", "2500")
         print("Default menu items loaded into MenuManager for simulation.")
-    
-    menu_manager.print_menu()
 
     order_manager = OrderManager(menu_manager, cooking_slots_capacity=2) 
     time_stepper = TimeStepper(order_manager)
