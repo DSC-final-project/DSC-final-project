@@ -844,14 +844,12 @@ class main_service_menu :
                 
                 confirm = input(f"주문 ID {order_id_to_delete}를 정말 삭제하시겠습니까? (y/n): ").lower()
                 if confirm == 'y':
-                    success, refund_amount = self.order_manager.delete_order(order_id_to_delete)
-                    if success:
+                    del_out = self.order_manager.delete_order(order_id_to_delete)
+                    if isinstance(del_out, str):
+                        print(del_out)
+                    else: #int 반환
                         print(f"주문 ID {order_id_to_delete}가 성공적으로 삭제되었습니다.")
-                        if refund_amount > 0:
-                            print(f"총 {refund_amount:,}원이 환불되었습니다.\n")
-                        else:
-                            print("환불될 금액이 없습니다.\n") # Should not happen if not completed/ready
-                    # else: OrderManager.delete_order already prints messages for failure
+                        print(f"총 {del_out}원이 환불되었습니다.\n")
                 else:
                     print("주문 삭제가 취소되었습니다.")
 

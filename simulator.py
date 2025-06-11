@@ -1,4 +1,7 @@
 import json
+import time
+import os
+
 from core.menu import MenuManager
 from core.order import OrderManager
 
@@ -25,7 +28,7 @@ class TimeStepper:
         # print(f"--- TimeStepper: Time advanced to {self.time} ---") # 상세 로그 필요시 주석 해제
 
 
-def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper):
+def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=1):
     """
     지정된 command 파일에 따라 시뮬레이션을 실행합니다.
     MenuManager, OrderManager, TimeStepper 인스턴스는 외부에서 생성되어 주입됩니다.
@@ -44,55 +47,70 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
     print(f"Total simulation duration: {simulation_duration} ticks")
     # 초기 상태에서 OrderManager의 current_time을 TimeStepper의 초기 시간과 동기화
     order_mgr.set_current_time(sim.time)
-    order_mgr.print_all_orders_summary() 
 
     for _ in range(simulation_duration): # 루프 변수 t는 직접 사용하지 않고 sim.time을 기준으로 함
         current_sim_time = sim.time 
-        print(f"\n\n======= Processing Time Step: {current_sim_time} =======")
+        print("\n"*5)
+        print(f"======= Processing Time Step: {current_sim_time} =======")
 
         for cmd in commands:
             if cmd.get("time") == current_sim_time:
                 action = cmd["action"]
                 print(f"  Action at time {current_sim_time}: {cmd}")
                 if action == "create":
-                    menu_name = cmd.get("menu")
-                    menu_item_obj = menu_mgr.menu_items.get(menu_name)
-                    if menu_item_obj:
-                        order_details = [{menu_item_obj: 1}] 
-                        new_om_order_id = order_mgr.create_order(order_details, current_sim_time)
-                        print(f"    Simulator: Requested creation for '{menu_name}'. OrderManager assigned ID {new_om_order_id}.")
-                    else:
-                        print(f"    Error: Menu item '{menu_name}' not found for create command.")
+                    order_details = []
+                    orders = cmd.get("order")
+                    for order in orders:
+                        menu_name, count = order
+                        menu_item_obj = menu_mgr.menu_items.get(menu_name)
+                        if menu_item_obj is None:
+                            print(f"Error: '{menu_name}'는 없는 메뉴입니다. ")
+                            continue
+                        order_details.append({menu_item_obj: count})
+                    order_id = order_mgr.create_order(order_details, current_sim_time)
+                    items = ", ".join(f"{name}{qty}" for name, qty in orders)
+                    print(f"[접수완료] 주문번호 {order_id} - {items} ")
                 
-                elif action == "delete":
+                elif action == "delete": # 주문 전체 삭제: pending인 주문만 delete 가능 
                     order_id_to_delete = cmd.get("order_id")
                     if order_id_to_delete is not None:
-                        success = order_mgr.delete_order(order_id_to_delete)
-                        print(f"    Simulator: Delete action for order_id {order_id_to_delete}. Success: {success}")
+                        del_out = order_mgr.delete_order(order_id_to_delete)
+                        if isinstance(del_out, str):
+                            print(f"[취소실패] X 주문번호 {order_id_to_delete} {del_out}")
+                        else:
+                            print(f"[취소완료] 주문번호 {order_id} - 환불 금액: {del_out}원")
                     else:
-                        print(f"    Error: 'order_id' missing for delete command.")
+                        print("Error: 'order_id' missing for delete command.")
 
                 elif action == "update":
                     order_id_to_update = cmd.get("order_id")
+                    update_out = order_mgr.update_order(order_id_to_update)
+                    if isinstance(update_out):
+                        print(f"[변경실패] X 주문번호 {order_id_to_update} {update_out}")
+                    else:
+
+                        print(f"[변경완료] 주문번호 {order_id_to_update} ")
+
+
                     new_menu_name = cmd.get("menu") # Assuming this is a string name
                     print(f"    Simulator: Update action for order_id {order_id_to_update} to '{new_menu_name}' - (Note: update logic is complex and may be limited).")
                     if order_id_to_update is not None:
                          order_mgr.update_order(order_id_to_update, new_menu_name) 
-                elif action == "print": # Assuming print command takes an order_id
+                         
+                elif action == "print": # 주문번호의 진행상황 출력 
                     order_id_to_print = cmd.get("order_id")
-                    if order_id_to_print is not None:
-                        print(f"    Simulator: Printing details for Order ID {order_id_to_print}")
-                        print(order_mgr.get_order_status_details(order_id_to_print))
-                    else: # If no order_id, print all
-                        print(f"    Simulator: Printing all orders summary.")
-                        order_mgr.print_all_orders_summary()
+                    print(f"    Simulator: Printing details for Order ID {order_id_to_print}")
+                    print(order_mgr.get_order_status_details(order_id_to_print))
+
+                else:
+                    print("Error: No such action")
         
         sim.step() 
 
         order_mgr.print_all_orders_summary()
-        
+        time.sleep(delay)
+
         if current_sim_time >= max_command_time + 10: 
-            all_orders_done = True
             if not order_mgr.orders:
                  pass 
             elif not any(o.status not in ['ready', 'completed'] for o in order_mgr.orders.values()):
@@ -106,13 +124,8 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
 
 
 if __name__ == "__main__":
-    import os
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Assuming simulator.py is in the 'script' directory, and 'assets' is a sibling to 'script'
-    # If simulator.py is in the project root, and assets is a subdirectory:
-    # command_path = os.path.join(script_dir, 'assets', 'commands.json')
-    # Based on your project structure (script folder containing simulator.py, assets folder at root)
-    project_root = os.path.join(script_dir, '..') 
+
+    project_root = os.path.dirname(os.path.abspath(__file__))
     command_path = os.path.join(project_root, 'assets', 'commands.json')
     
     menu_manager = MenuManager()
@@ -124,6 +137,8 @@ if __name__ == "__main__":
         menu_manager.create_menu("에스프레소", "2", "2500")
         print("Default menu items loaded into MenuManager for simulation.")
     
+    menu_manager.print_menu()
+
     order_manager = OrderManager(menu_manager, cooking_slots_capacity=2) 
     time_stepper = TimeStepper(order_manager)
 
