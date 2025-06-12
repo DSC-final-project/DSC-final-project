@@ -25,7 +25,7 @@ class TimeStepper:
         # print(f"--- TimeStepper: Time advanced to {self.time} ---") # 상세 로그 필요시 주석 해제
 
 
-def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=3):
+def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=5):
     """
     지정된 command 파일에 따라 시뮬레이션을 실행합니다.
     MenuManager, OrderManager, TimeStepper 인스턴스는 외부에서 생성되어 주입됩니다.
@@ -100,7 +100,7 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
                     order_id_to_print = cmd.get("order_id")
                     print(f"고객요청: 주문번호{order_id_to_print} 제조현황")
                     time.sleep(delay)
-                    print(f"----- 주문번호 {order_id_to_print} -----\n")
+                    print(f"-------- 주문번호 {order_id_to_print} --------\n")
                     print(order_mgr.retreive_order_status(order_id_to_print))
                     print("-"*30)
 
@@ -127,15 +127,15 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--commands", default="", help="Choose commands for simulation")
+    parser.add_argument("--capacity", default=3, help="Cooking(heap) capacity")
     args = parser.parse_args()
-    command_file = f'commands{args.commands}.json'
+    capacity = int(args.capacity)
 
     project_root = os.path.dirname(os.path.abspath(__file__))
-    command_path = os.path.join(project_root, 'assets', command_file)
+    command_path = os.path.join(project_root, 'assets', 'commands.json')
     
     menu_manager = MenuManager()
-    order_manager = OrderManager(menu_manager, cooking_slots_capacity=3) 
+    order_manager = OrderManager(menu_manager, cooking_slots_capacity=capacity) 
     time_stepper = TimeStepper(order_manager)
 
     simulate(command_path, menu_manager, order_manager, time_stepper)

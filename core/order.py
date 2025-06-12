@@ -130,7 +130,7 @@ class OrderManager:
         return current_order_id
     
 
-    def diff_orders(self, org_order_dic, new_order_dic):
+    def diff_orders(self, org_order_dic, new_order_dic, waiting_counts):
         '''
         Return : [[변경1], [변경2], ...]
         메뉴 변경이면 - [0, 이전메뉴, 이후메뉴]
@@ -146,7 +146,14 @@ class OrderManager:
             old = org_order_dic.get(name, 0)
             new = new_order_dic.get(name, 0)
             if new < old:
-                removed[name] = old - new
+                total_remove = old - new
+                can_move = waiting_counts.get(name,0)
+                if can_move == 0:
+                    print(f"[변경실패] {name}은(는) 이미 조리가 시작되어 취소 및 변경이 불가합니다")
+                    continue
+                if total_remove > can_move:
+                    print(f"[변경실패] {name} {total_remove - can_move}개는 이미 조리가 시작되어 취소가 불가합니다")
+                removed[name] = min(total_remove, can_move)
             elif new > old:
                 added[name] = new - old
         
@@ -191,8 +198,13 @@ class OrderManager:
             self.orders[order_id_to_update] = new_order
         else: # in_progress 
             org_order_dic = Counter(item.name for item in order.menu_items)
+            waiting_counts = Counter(
+                item.name
+                for item, status in zip(order.menu_items, order.item_status)
+                if status == 'waiting'
+            )
             new_order_dic = {name: qty for name, qty in new_order}
-            changes = self.diff_orders(org_order_dic, new_order_dic)
+            changes = self.diff_orders(org_order_dic, new_order_dic, waiting_counts)
             
             for change in changes:
                 if change[0] == 0:
@@ -218,6 +230,7 @@ class OrderManager:
                                 break
                 else:
                     print("Error: 정의되지 않은 update")
+                order.update_order_status_and_estimates(self.current_time)
         order.update_order_status_and_estimates(self.current_time)
 
         return order
@@ -312,7 +325,7 @@ class OrderManager:
                 order.actual_completion_time if order.actual_completion_time is not None else "",
                 "\n".join(items_display_list) # 각 아이템 정보를 개행으로 연결
             ])
-        print(tabulate(table_data, headers=headers, tablefmt="grid",maxcolwidths=[None]*len(headers)))
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
         print()
 
     def print_order(self): # Kept for compatibility with user_services, but uses new summary
