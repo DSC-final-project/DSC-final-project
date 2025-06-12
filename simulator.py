@@ -68,33 +68,39 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
                         order_details.append({menu_item_obj: count})
                     order_id = order_mgr.create_order(order_details, current_sim_time)
                     items = ", ".join(f"{name}{qty}" for name, qty in orders)
-                    print(f"[접수완료] 주문번호 {order_id} - {items} ")
+                    print(f"[접수완료] 주문번호{order_id} - {items} ")
                 
                 elif action == "delete": # 주문 전체 삭제: pending인 주문만 delete 가능 
                     order_id_to_delete = cmd.get("order_id")
+                    print(f"고객요청: 주문번호{order_id_to_delete} 취소")
+                    time.sleep(delay)
                     if order_id_to_delete is not None:
                         del_out = order_mgr.delete_order(order_id_to_delete)
                         if isinstance(del_out, str):
-                            print(f"[취소실패] 주문번호 {order_id_to_delete}  {del_out}")
+                            print(f"[취소실패] 주문번호{order_id_to_delete}  {del_out}")
                         else:
-                            print(f"[취소완료] 주문번호 {order_id} - 환불 금액: {del_out}원")
+                            print(f"[취소완료] 환불 금액: {del_out}원")
                     else:
                         print("Error: 'order_id' missing for delete command.")
 
                 elif action == "update":
                     order_id_to_update = cmd.get("order_id")
                     new_order = cmd.get("order")
+                    print(f"고객요청: 주문번호{order_id_to_update} 변경")
                     update_out = order_mgr.update_order(order_id_to_update, new_order)
+                    time.sleep(delay)
                     if isinstance(update_out, str):
-                        print(f"[변경실패] 주문번호 {order_id_to_update}  {update_out}")
+                        print(f"[변경실패] 주문번호{order_id_to_update}  {update_out}")
                     else:
                         order_dic = Counter(item.name for item in update_out.menu_items)
                         items = ", ".join(f"{name}{qty}" for name, qty in order_dic.items()) #order
-                        print(f"[주문변경] 주문번호 {order_id_to_update} - {items}")
+                        print(f"[변경완료] 변경된 주문: {items}")
                          
                 elif action == "retreive": # 주문번호의 진행상황 출력 
                     order_id_to_print = cmd.get("order_id")
-                    print(f"\n--- 주문번호 {order_id_to_print} 제조현황 ---\n")
+                    print(f"고객요청: 주문번호{order_id_to_print} 제조현황")
+                    time.sleep(delay)
+                    print(f"----- 주문번호 {order_id_to_print} -----\n")
                     print(order_mgr.retreive_order_status(order_id_to_print))
                     print("-"*30)
 

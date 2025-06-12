@@ -159,6 +159,7 @@ class OrderManager:
                     continue
                 qty = min(rem_qty, add_qty)
                 changes.append([0, rem_name, add_name])
+                print(f"   * {rem_name} -> {add_name} 변경")
                 removed[rem_name] -= qty
                 added[add_name]   -= qty
                 rem_qty = removed[rem_name]
@@ -168,9 +169,10 @@ class OrderManager:
         for name, qty in removed.items():
             if qty > 0:
                 changes.append([1, name, qty])
+                print(f"   * {name} {qty}개 취소")
         for name, qty in added.items():
             if qty > 0:
-                print(f"[변경실패] 메뉴를 추가하시려면 새 주문을 접수하여 주시기 바랍니다")
+                print(f"[변경실패] {name} - 주문을 새로 접수하여 주시기 바랍니다")
         
         return changes
     
@@ -286,7 +288,7 @@ class OrderManager:
             print("No orders in the system.")
             return
 
-        headers = ["Order ID", "Status", "Order Time", "Est. Finish", "Actual Finish", "Items"]
+        headers = ["Order ID", "Items", "Status", "Order Time", "Est. Finish", "Actual Finish"]
         table_data = []
         for order_id in sorted(self.orders.keys()):
             order = self.orders[order_id]
@@ -310,7 +312,7 @@ class OrderManager:
                 order.actual_completion_time if order.actual_completion_time is not None else "",
                 "\n".join(items_display_list) # 각 아이템 정보를 개행으로 연결
             ])
-        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+        print(tabulate(table_data, headers=headers, tablefmt="grid",maxcolwidths=[None]*len(headers)))
         print()
 
     def print_order(self): # Kept for compatibility with user_services, but uses new summary
