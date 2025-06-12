@@ -167,7 +167,7 @@ class OrderManager:
         
         for name, qty in removed.items():
             if qty > 0:
-                changes.append([1, name, -qty])
+                changes.append([1, name, qty])
         for name, qty in added.items():
             if qty > 0:
                 print(f"[변경실패] 메뉴를 추가하시려면 새 주문을 접수하여 주시기 바랍니다")
@@ -185,8 +185,9 @@ class OrderManager:
             return "이미 제조완료된 주문입니다"
         
         if order.status == 'pending': # 아직 아무것도 시작하기 전이므로 그냥 입력받은걸로 대체
+            new_order = Order(order_id=order_id_to_update, order_time=self.current_time)
             self.orders[order_id_to_update] = new_order
-        else: # in_progress or completed
+        else: # in_progress 
             org_order_dic = Counter(item.name for item in order.menu_items)
             new_order_dic = {name: qty for name, qty in new_order}
             changes = self.diff_orders(org_order_dic, new_order_dic)
@@ -196,8 +197,8 @@ class OrderManager:
                     old_menu = change[1]
                     new_menu = change[2]
                     for idx, menu in enumerate(order.menu_items):
-                        if (menu == old_menu) & (order.item_status[idx] == 'waiting'):
-                            order.menu_items[idx] = new_menu
+                        if (menu.name == old_menu) & (order.item_status[idx] == 'waiting'):
+                            order.menu_items[idx] = self.menu_manager.menu_items[new_menu]
                             order.item_remaining_cook_time[idx] = self.menu_manager.menu_items[new_menu].cook_time
                             break
                 elif change[0] == 1:
@@ -205,7 +206,7 @@ class OrderManager:
                     n = change[2]
                     count = 0
                     for idx, menu in enumerate(order.menu_items):
-                        if (menu == target_menu) & (order.item_status[idx] == 'waiting'):
+                        if (menu.name == target_menu) & (order.item_status[idx] == 'waiting'):
                             del order.menu_items[idx] 
                             del order.item_status[idx] 
                             del order.item_cook_start_time[idx]
@@ -220,7 +221,7 @@ class OrderManager:
         return order
     
 
-    def delete_order(self, order_id_to_delete: int) -> tuple[bool, int]:
+    def delete_order(self, order_id_to_delete: int) -> str | int:
         """
         Deletes an order from the system.
         Returns: (success_bool, refund_amount_int)
@@ -250,7 +251,7 @@ class OrderManager:
         del self.orders[order_id_to_delete]
         return refund_amount
 
-    def get_order_status_details(self, order_id: int) -> str:
+    def retreive_order_status(self, order_id: int) -> str:
         if order_id not in self.orders:
             return f"Order ID {order_id} not found."
         
@@ -261,8 +262,8 @@ class OrderManager:
             f"Order ID: {order.order_id}",
             f"  Status: {order.status}",
             f"  Order Time: {order.order_time}",
-            f"  Est. Completion: {order.estimated_completion_time if order.estimated_completion_time is not None else 'N/A'}",
-            f"  Actual Completion: {order.actual_completion_time if order.actual_completion_time is not None else 'N/A'}",
+            # f"  Est. Completion: {order.estimated_completion_time if order.estimated_completion_time is not None else 'N/A'}",
+            # f"  Actual Completion: {order.actual_completion_time if order.actual_completion_time is not None else 'N/A'}",
             "  Items:"
         ]
         for i, menu_item in enumerate(order.menu_items):
@@ -270,17 +271,17 @@ class OrderManager:
             if order.item_status[i] == 'cooking':
                 start = order.item_cook_start_time[i]
                 finish = start + menu_item.cook_time
-                item_detail += f" (Started: {start}, Finishes: {finish}, Remaining: {finish - self.current_time})"
+                item_detail += f" ({finish - self.current_time}분 후 완료)"
             elif order.item_status[i] == 'completed':
                 start = order.item_cook_start_time[i]
                 finish = start + menu_item.cook_time
-                item_detail += f" (Cooked: {start}-{finish})"
+                item_detail += f" ({start}-{finish}분 소요)"
             details.append(item_detail)
         return "\n".join(details)
     
     def print_all_orders_summary(self):
 
-        print(f"\n  Orders ")
+        print(f"\n\n  Orders ")
         if not self.orders:
             print("No orders in the system.")
             return
@@ -363,7 +364,6 @@ class OrderManager:
 
     def schedule_new_items_to_cook(self, current_time: int):
         """대기 중인 주문들의 아이템을 빈 조리 슬롯에 할당합니다."""
-        print(f"  OrderManager: Scheduling new items at time {current_time}.")
 
         # To prevent an infinite loop if an order at the head of the queue
         # cannot be processed (e.g., no items scheduled for it) and is not dequeued,
@@ -378,11 +378,11 @@ class OrderManager:
             if stuck_order_id_at_head == order_id_to_process:
                 # We've already tried this order in this scheduling cycle, made no progress,
                 # and it's still at the head. Break to prevent an infinite loop.
-                print(f"    Order ID {order_id_to_process} is still at head with no progress made in this cycle. Breaking scheduling.")
+                # print(f"    Order ID {order_id_to_process} is still at head with no progress made in this cycle. Breaking scheduling.")
                 break
 
             order = self.orders[order_id_to_process]
-            print(f"    Considering Order ID: {order_id_to_process} (Status: {order.status}, Items: {len(order.menu_items)})")
+            # print(f"    Considering Order ID: {order_id_to_process} (Status: {order.status}, Items: {len(order.menu_items)})")
 
             item_scheduled_this_iteration = False
             for item_idx, status in enumerate(order.item_status):
@@ -395,24 +395,24 @@ class OrderManager:
                         expected_finish_time = current_time + menu_item_obj.cook_time
                         self.cooking_slots.push((expected_finish_time, order_id_to_process, item_idx))
                         
-                        print(f"    Item '{menu_item_obj.name}' (Order {order_id_to_process}, ItemIdx {item_idx}) STARTS cooking. Est.Finish: {expected_finish_time}.")
+                        # print(f"    Item '{menu_item_obj.name}' (Order {order_id_to_process}, ItemIdx {item_idx}) STARTS cooking. Est.Finish: {expected_finish_time}.")
                         item_scheduled_this_iteration = True
                         if order.status == 'pending': 
                             order.status = 'in_progress'
                         stuck_order_id_at_head = None # Progress was made, so reset the stuck flag
                     else:
-                        print(f"      No more cooking slots during Order {order_id_to_process}. Breaking item loop.")
+                        # print(f"      No more cooking slots during Order {order_id_to_process}. Breaking item loop.")
                         break 
 
             if all(s != 'waiting' for s in order.item_status):
                 # All items for this order are now cooking or completed
                 self.waiting_orders_queue.dequeue()
-                print(f"    All items for Order {order_id_to_process} are now scheduled/completed. Dequeued.")
+                # print(f"    All items for Order {order_id_to_process} are now scheduled/completed. Dequeued.")
                 stuck_order_id_at_head = None # Head of queue changed
             elif not item_scheduled_this_iteration:
                 # No items were scheduled for this order in this pass.
                 # It remains at the head. Mark it as potentially stuck.
-                print(f"    No items scheduled for Order {order_id_to_process} in this pass. It remains at head.")
+                # print(f"    No items scheduled for Order {order_id_to_process} in this pass. It remains at head.")
                 stuck_order_id_at_head = order_id_to_process
             else:
                 # Items were scheduled, but the order is not fully done. It remains at head.
@@ -421,7 +421,6 @@ class OrderManager:
 
     def update_all_order_details(self, current_time: int):
         """모든 주문의 상태 및 예상 시간을 업데이트합니다 (주로 표시용)."""
-        print(f"  OrderManager: Updating all order details for time {current_time}.")
         for order in self.orders.values():
             if order.status not in ['ready', 'completed']: 
                 order.update_order_status_and_estimates(current_time)

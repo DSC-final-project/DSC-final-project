@@ -1,7 +1,8 @@
 [
-  {"time": 0, "action": "create", "order": [["아메리카노", 1]]},
-  {"time": 1, "action": "create", "order": [["카페라떼", 1], ["아메리카노", 3]]},
-  {"time": 2, "action": "delete", "order_id": 1},
-  {"time": 3, "action": "update", "order_id": 2, "order": [["카페라떼", 1], ["아메리카노", 2]]},
-  {"time": 4, "action": "print", "order_id": 2}
+  {"time": 0, "action": "create", "order": [["카페라떼", 2], ["아메리카노", 4]]},
+  {"time": 0, "action": "create", "order": [["커피번", 1]]},
+  {"time": 1, "action": "retreive", "order_id": 1},
+  {"time": 1, "action": "update", "order_id": 1, "order": [["카페라떼", 2], ["아메리카노", 2], ["바닐라라떼", 1]]},
+  {"time": 3, "action": "retreive", "order_id":2},
+  {"time": 3, "action": "delete", "order_id": 2}
 ]

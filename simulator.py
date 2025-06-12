@@ -1,6 +1,7 @@
 import json
 import time
 import os
+import argparse
 from collections import Counter
 
 from core.menu import MenuManager
@@ -24,7 +25,7 @@ class TimeStepper:
         # print(f"--- TimeStepper: Time advanced to {self.time} ---") # 상세 로그 필요시 주석 해제
 
 
-def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=2):
+def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=3):
     """
     지정된 command 파일에 따라 시뮬레이션을 실행합니다.
     MenuManager, OrderManager, TimeStepper 인스턴스는 외부에서 생성되어 주입됩니다.
@@ -39,8 +40,7 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
     
     simulation_duration = max(max_command_time + 20, 30) 
 
-    print(f"\n\n------------- Simulation Start --------------")
-    print(f"Total simulation duration: {simulation_duration} ticks\n")
+    print(f"\n\n------------- Simulation Start (Total simulation duration: {simulation_duration} ticks) --------------\n")
     # 초기 상태에서 OrderManager의 current_time을 TimeStepper의 초기 시간과 동기화
     order_mgr.set_current_time(sim.time)
     menu_mgr.print_menu()
@@ -48,15 +48,14 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
     for _ in range(simulation_duration): # 루프 변수 t는 직접 사용하지 않고 sim.time을 기준으로 함
         current_sim_time = sim.time 
         order_mgr.set_current_time(current_sim_time)
-        time.sleep(delay)
 
         print("\n"*5)
-        print(f"======= Processing Time Step: {current_sim_time} =======")
+        print(f"======= Processing Time Step: {current_sim_time} =======\n")
 
         for cmd in commands:
             if cmd.get("time") == current_sim_time:
+                time.sleep(delay)
                 action = cmd["action"]
-                print(f"  Action at time {current_sim_time}: {cmd}")
                 if action == "create":
                     order_details = []
                     orders = cmd.get("order")
@@ -93,19 +92,21 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
                         items = ", ".join(f"{name}{qty}" for name, qty in order_dic.items()) #order
                         print(f"[주문변경] 주문번호 {order_id_to_update} - {items}")
                          
-                elif action == "print": # 주문번호의 진행상황 출력 
+                elif action == "retreive": # 주문번호의 진행상황 출력 
                     order_id_to_print = cmd.get("order_id")
                     print(f"\n--- 주문번호 {order_id_to_print} 제조현황 ---\n")
-                    print(order_mgr.get_order_status_details(order_id_to_print))
+                    print(order_mgr.retreive_order_status(order_id_to_print))
                     print("-"*30)
 
                 else:
                     print("Error: No such action")
         
         sim.step() 
+        time.sleep(delay)
         order_mgr.print_all_orders_summary()
+        time.sleep(delay)
 
-        if current_sim_time >= max_command_time + 10: 
+        if current_sim_time >= max_command_time + 2: 
             if not order_mgr.orders:
                  pass 
             elif not any(o.status not in ['ready', 'completed'] for o in order_mgr.orders.values()):
@@ -119,20 +120,16 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--commands", default="", help="Choose commands for simulation")
+    args = parser.parse_args()
+    command_file = f'commands{args.commands}.json'
 
     project_root = os.path.dirname(os.path.abspath(__file__))
-    command_path = os.path.join(project_root, 'assets', 'commands.json')
+    command_path = os.path.join(project_root, 'assets', command_file)
     
     menu_manager = MenuManager()
-    # Ensure MenuManager has items, if not loaded by default constructor
-    if not menu_manager.menu_items: 
-        menu_manager.create_menu("아메리카노", "3", "3000")
-        menu_manager.create_menu("카페라떼", "5", "3500")
-        menu_manager.create_menu("카푸치노", "5", "4000")
-        menu_manager.create_menu("에스프레소", "2", "2500")
-        print("Default menu items loaded into MenuManager for simulation.")
-
-    order_manager = OrderManager(menu_manager, cooking_slots_capacity=2) 
+    order_manager = OrderManager(menu_manager, cooking_slots_capacity=3) 
     time_stepper = TimeStepper(order_manager)
 
     simulate(command_path, menu_manager, order_manager, time_stepper)
