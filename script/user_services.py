@@ -293,6 +293,7 @@ class main_service_menu :
             if total_price == 0 :
                 break
         return False # Should not be reached if payment completes
+    
     def user_order_check(self) :
         '''
         사용자가 order를 확인할 수 있도록 해줌
@@ -305,17 +306,35 @@ class main_service_menu :
             return
 
         while True:
-            order_id_input = input("확인할 주문 ID를 입력하세요 (전체 주문 현황은 'all', 뒤로가기는 '-1'): ")
-            if order_id_input.lower() == 'all':
-                self.order_manager.print_all_orders_summary()
-            elif order_id_input == '-1':
+            order_id_input = input("확인할 주문 ID를 입력하세요 (뒤로가기는 '-1'): ") # 'all' 옵션 제거
+            if order_id_input == '-1':
                 break
             else:
                 try:
                     order_id = int(order_id_input)
-                    print(self.order_manager.get_order_status_details(order_id))
+                    order_to_check = self.order_manager.orders.get(order_id)
+
+                    if order_to_check:
+                        # Determine the current time for status update
+                        current_time_for_update = self.order_manager.current_time # Default to OrderManager's current time
+                        if self.time_stepper:
+                            current_time_for_update = self.time_stepper.time
+                        
+                        # Ensure OrderManager's internal current_time is set,
+                        # as get_order_status_details relies on it.
+                        self.order_manager.set_current_time(current_time_for_update)
+                        
+                        # Update the order's status based on this current time.
+                        order_to_check.update_order_status_and_estimates(current_time_for_update)
+
+                        # Always print the details if the order exists.
+                        # get_order_status_details will handle 'N/A' for completion times appropriately.
+                        print(self.order_manager.get_order_status_details(order_id, user_view=True))
+                    else:
+                        # Order ID not found
+                        print(f"주문 ID {order_id}를 찾을 수 없습니다.")
                 except ValueError:
-                    print("잘못된 입력입니다. 주문 ID(숫자), 'all' 또는 '-1'을 입력해주세요.")
+                    print("잘못된 입력입니다. 주문 ID(숫자) 또는 '-1'을 입력해주세요.") # 'all' 옵션 제거된 에러 메시지
             print("-" * 20)
 #######################
 ### Operator System ###

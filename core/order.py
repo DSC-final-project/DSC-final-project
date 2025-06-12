@@ -250,21 +250,27 @@ class OrderManager:
         del self.orders[order_id_to_delete]
         return refund_amount
 
-    def get_order_status_details(self, order_id: int) -> str:
+    def get_order_status_details(self, order_id: int, user_view: bool = False) -> str:
         if order_id not in self.orders:
             return f"Order ID {order_id} not found."
         
         order = self.orders[order_id]
         order.update_order_status_and_estimates(self.current_time) 
 
-        details = [
-            f"Order ID: {order.order_id}",
-            f"  Status: {order.status}",
+        details = [f"Order ID: {order.order_id}"]
+
+        if not user_view:
+            details.append(f"  Status: {order.status}")
+        
+        details.extend([
             f"  Order Time: {order.order_time}",
             f"  Est. Completion: {order.estimated_completion_time if order.estimated_completion_time is not None else 'N/A'}",
-            f"  Actual Completion: {order.actual_completion_time if order.actual_completion_time is not None else 'N/A'}",
-            "  Items:"
-        ]
+        ])
+
+        if not user_view:
+            details.append(f"  Actual Completion: {order.actual_completion_time if order.actual_completion_time is not None else 'N/A'}")
+
+        details.append("  Items:")
         for i, menu_item in enumerate(order.menu_items):
             item_detail = f"    - {menu_item.name}: {order.item_status[i]}"
             if order.item_status[i] == 'cooking':
@@ -365,7 +371,7 @@ class OrderManager:
 
     def schedule_new_items_to_cook(self, current_time: int):
         """대기 중인 주문들의 아이템을 빈 조리 슬롯에 할당합니다."""
-        print(f"  OrderManager: Scheduling new items at time {current_time}.")
+        # print(f"  OrderManager: Scheduling new items at time {current_time}.")
 
         # To prevent an infinite loop if an order at the head of the queue
         # cannot be processed (e.g., no items scheduled for it) and is not dequeued,
@@ -380,11 +386,11 @@ class OrderManager:
             if stuck_order_id_at_head == order_id_to_process:
                 # We've already tried this order in this scheduling cycle, made no progress,
                 # and it's still at the head. Break to prevent an infinite loop.
-                print(f"    Order ID {order_id_to_process} is still at head with no progress made in this cycle. Breaking scheduling.")
+                # print(f"    Order ID {order_id_to_process} is still at head with no progress made in this cycle. Breaking scheduling.")
                 break
 
             order = self.orders[order_id_to_process]
-            print(f"    Considering Order ID: {order_id_to_process} (Status: {order.status}, Items: {len(order.menu_items)})")
+            # print(f"    Considering Order ID: {order_id_to_process} (Status: {order.status}, Items: {len(order.menu_items)})")
 
             item_scheduled_this_iteration = False
             for item_idx, status in enumerate(order.item_status):
@@ -397,24 +403,24 @@ class OrderManager:
                         expected_finish_time = current_time + menu_item_obj.cook_time
                         self.cooking_slots.push((expected_finish_time, order_id_to_process, item_idx))
                         
-                        print(f"    Item '{menu_item_obj.name}' (Order {order_id_to_process}, ItemIdx {item_idx}) STARTS cooking. Est.Finish: {expected_finish_time}.")
+                        # print(f"    Item '{menu_item_obj.name}' (Order {order_id_to_process}, ItemIdx {item_idx}) STARTS cooking. Est.Finish: {expected_finish_time}.")
                         item_scheduled_this_iteration = True
                         if order.status == 'pending': 
                             order.status = 'in_progress'
                         stuck_order_id_at_head = None # Progress was made, so reset the stuck flag
                     else:
-                        print(f"      No more cooking slots during Order {order_id_to_process}. Breaking item loop.")
+                        # print(f"      No more cooking slots during Order {order_id_to_process}. Breaking item loop.")
                         break 
 
             if all(s != 'waiting' for s in order.item_status):
                 # All items for this order are now cooking or completed
                 self.waiting_orders_queue.dequeue()
-                print(f"    All items for Order {order_id_to_process} are now scheduled/completed. Dequeued.")
+                # print(f"    All items for Order {order_id_to_process} are now scheduled/completed. Dequeued.")
                 stuck_order_id_at_head = None # Head of queue changed
             elif not item_scheduled_this_iteration:
                 # No items were scheduled for this order in this pass.
                 # It remains at the head. Mark it as potentially stuck.
-                print(f"    No items scheduled for Order {order_id_to_process} in this pass. It remains at head.")
+                # print(f"    No items scheduled for Order {order_id_to_process} in this pass. It remains at head.")
                 stuck_order_id_at_head = order_id_to_process
             else:
                 # Items were scheduled, but the order is not fully done. It remains at head.
@@ -423,7 +429,7 @@ class OrderManager:
 
     def update_all_order_details(self, current_time: int):
         """모든 주문의 상태 및 예상 시간을 업데이트합니다 (주로 표시용)."""
-        print(f"  OrderManager: Updating all order details for time {current_time}.")
+        # print(f"  OrderManager: Updating all order details for time {current_time}.")
         for order in self.orders.values():
             if order.status not in ['ready', 'completed']: 
                 order.update_order_status_and_estimates(current_time)
@@ -454,7 +460,8 @@ class OrderManager:
         self.cooking_slots.heap = new_cooking_heap
         heapq.heapify(self.cooking_slots.heap) 
         if item_found_and_removed:
-            print(f"  Item (Order {order_id}, ItemIdx {item_idx_in_order}) was cooking and has been removed from slot.")
+            # print(f"  Item (Order {order_id}, ItemIdx {item_idx_in_order}) was cooking and has been removed from slot.")
+            pass
         return item_found_and_removed
 
     def _adjust_cooking_slot_indices_after_delete(self, order_id_affected: int, deleted_item_original_idx: int):
@@ -518,13 +525,13 @@ class OrderManager:
                  price_difference = new_price - old_price (negative for refund if deleted/cheaper)
         """
         if order_id not in self.orders:
-            print(f"  Error: Order {order_id} not found for modification.")
+            # print(f"  Error: Order {order_id} not found for modification.")
             return False, 0
 
         order = self.orders[order_id]
 
         if not (0 <= item_idx_in_order < len(order.menu_items)):
-            print(f"  Error: Invalid item index {item_idx_in_order} for Order {order_id}.")
+            # print(f"  Error: Invalid item index {item_idx_in_order} for Order {order_id}.")
             return False, 0
 
         original_item_status = order.item_status[item_idx_in_order]
@@ -532,7 +539,7 @@ class OrderManager:
         price_difference = 0
 
         if original_item_status == 'completed':
-            print(f"  Error: Item '{original_menu_item.name}' in Order {order_id} (Idx {item_idx_in_order}) is 'completed' and cannot be modified.")
+            # print(f"  Error: Item '{original_menu_item.name}' in Order {order_id} (Idx {item_idx_in_order}) is 'completed' and cannot be modified.")
             return False, 0
 
         if original_item_status == 'cooking':
@@ -541,7 +548,7 @@ class OrderManager:
 
         if delete_item_flag:
             price_difference = -original_menu_item.price # Refund for the deleted item
-            print(f"  Deleting item '{original_menu_item.name}' (Original Idx {item_idx_in_order}) from Order {order_id}.")
+            # print(f"  Deleting item '{original_menu_item.name}' (Original Idx {item_idx_in_order}) from Order {order_id}.")
             
             order.menu_items.pop(item_idx_in_order)
             order.item_status.pop(item_idx_in_order)
@@ -552,36 +559,37 @@ class OrderManager:
             self._adjust_cooking_slot_indices_after_delete(order_id, item_idx_in_order)
             
             if not order.menu_items:
-                print(f"  Order {order_id} is now empty after item deletion.")
+                # print(f"  Order {order_id} is now empty after item deletion.")
+                pass
         elif new_menu_item_obj:
             price_difference = new_menu_item_obj.price - original_menu_item.price
-            print(f"  Changing item '{original_menu_item.name}' to '{new_menu_item_obj.name}' in Order {order_id} (Idx {item_idx_in_order}).")
+            # print(f"  Changing item '{original_menu_item.name}' to '{new_menu_item_obj.name}' in Order {order_id} (Idx {item_idx_in_order}).")
             order.menu_items[item_idx_in_order] = new_menu_item_obj
             order.item_status[item_idx_in_order] = 'waiting' # Changed/modified item goes to waiting
             order.item_cook_start_time[item_idx_in_order] = None
             order.item_remaining_cook_time[item_idx_in_order] = new_menu_item_obj.cook_time
         else:
-            print("  Error: No modification action specified (delete or change) for item.")
+            # print("  Error: No modification action specified (delete or change) for item.")
             return False, 0
 
         order.update_order_status_and_estimates(self.current_time)
         self._ensure_order_in_waiting_queue(order_id) # Re-evaluate its position or add if needed
         self.schedule_new_items_to_cook(self.current_time)
 
-        print(f"  Order {order_id} item modification processed. Price difference: {price_difference}")
+        # print(f"  Order {order_id} item modification processed. Price difference: {price_difference}")
         return True, price_difference
 
     def add_new_item_to_order(self, order_id: int, menu_item_obj_to_add, quantity: int):
         if order_id not in self.orders:
-            print(f"  Error: Order {order_id} not found for adding new item.")
+            # print(f"  Error: Order {order_id} not found for adding new item.")
             return False
         
         if not menu_item_obj_to_add or quantity <= 0:
-            print(f"  Error: Invalid menu item or quantity for adding to Order {order_id}.")
+            # print(f"  Error: Invalid menu item or quantity for adding to Order {order_id}.")
             return False
 
         order = self.orders[order_id]
-        print(f"  Adding {quantity} of '{menu_item_obj_to_add.name}' to Order {order_id}.")
+        # print(f"  Adding {quantity} of '{menu_item_obj_to_add.name}' to Order {order_id}.")
         for _ in range(quantity):
             order.menu_items.append(menu_item_obj_to_add)
             order.item_status.append('waiting')
@@ -609,7 +617,7 @@ class OrderManager:
             if order:
                 for item in order.menu_items:
                     if item.name == menu_item_name_to_check:
-                        print(f"DEBUG: Menu item '{menu_item_name_to_check}' found in waiting Order ID {order_id_in_waiting_q}.")
+                        # print(f"DEBUG: Menu item '{menu_item_name_to_check}' found in waiting Order ID {order_id_in_waiting_q}.")
                         return True
 
         # Check items currently in cooking slots
@@ -617,7 +625,7 @@ class OrderManager:
             order = self.orders.get(order_id_in_cooking)
             if order and item_idx_in_cooking < len(order.menu_items):
                 if order.menu_items[item_idx_in_cooking].name == menu_item_name_to_check:
-                    print(f"DEBUG: Menu item '{menu_item_name_to_check}' found cooking in Order ID {order_id_in_cooking} (Item Idx {item_idx_in_cooking}).")
+                    # print(f"DEBUG: Menu item '{menu_item_name_to_check}' found cooking in Order ID {order_id_in_cooking} (Item Idx {item_idx_in_cooking}).")
                     return True
         
         return False
