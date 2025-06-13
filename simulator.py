@@ -25,7 +25,7 @@ class TimeStepper:
         # print(f"--- TimeStepper: Time advanced to {self.time} ---") # 상세 로그 필요시 주석 해제
 
 
-def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay=5):
+def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim: TimeStepper, delay):
     """
     지정된 command 파일에 따라 시뮬레이션을 실행합니다.
     MenuManager, OrderManager, TimeStepper 인스턴스는 외부에서 생성되어 주입됩니다.
@@ -127,15 +127,15 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--capacity", default=3, help="Cooking(heap) capacity")
+    parser.add_argument("--capacity", type=int, default=3, help="Cooking(heap) capacity")
+    parser.add_argument("--delay", type=int, default=1, help="출력시간 간격 조정")
     args = parser.parse_args()
-    capacity = int(args.capacity)
 
     project_root = os.path.dirname(os.path.abspath(__file__))
     command_path = os.path.join(project_root, 'assets', 'commands.json')
     
     menu_manager = MenuManager()
-    order_manager = OrderManager(menu_manager, cooking_slots_capacity=capacity) 
+    order_manager = OrderManager(menu_manager, cooking_slots_capacity=args.capacity) 
     time_stepper = TimeStepper(order_manager)
 
-    simulate(command_path, menu_manager, order_manager, time_stepper)
+    simulate(command_path, menu_manager, order_manager, time_stepper, delay=args.delay)
