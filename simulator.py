@@ -30,8 +30,8 @@ def simulate(file_path: str, menu_mgr: MenuManager, order_mgr: OrderManager, sim
     지정된 command 파일에 따라 시뮬레이션을 실행합니다.
     MenuManager, OrderManager, TimeStepper 인스턴스는 외부에서 생성되어 주입됩니다.
     """
-
-    with open(file_path, "r") as f:
+    # commands.json 파일을 UTF-8 인코딩으로 명시하여 엽니다.
+    with open(file_path, "r", encoding='utf-8') as f:
         commands = json.load(f)
 
     max_command_time = 0
