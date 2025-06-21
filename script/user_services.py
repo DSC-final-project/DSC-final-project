@@ -313,7 +313,7 @@ class main_service_menu :
             else:
                 try:
                     order_id = int(order_id_input)
-                    print(self.order_manager.get_order_status_details(order_id))
+                    print(self.order_manager.retreive_order_status(order_id))
                 except ValueError:
                     print("잘못된 입력입니다. 주문 ID(숫자), 'all' 또는 '-1'을 입력해주세요.")
             print("-" * 20)
